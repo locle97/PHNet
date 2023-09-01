@@ -2,7 +2,7 @@
 
 We present a patch-based harmonization network consisting of novel Patch-based normalization (PN) blocks and a feature extractor based on statistical color transfer. We evaluate our approach on available image harmonization datasets. Extensive experiments demonstrate the network's high generalization capability for different domains. Additionally, we collected a new dataset focused on portrait harmonization. Our network achieves state-of-the-art results on iHarmony4 and gains the best metrics on the synthetic portrait dataset.
 
-![example](images/scheme.jpg)
+![example](assets/scheme.jpg)
 
 For more information see our paper [PHNet: Patch-based Normalization for Image Harmonization](https://arxiv.org).
 
@@ -11,11 +11,9 @@ Clone and install required python packages:
 ```bash
 git clone <repo>
 cd <repo>
-# Create virtual env by conda or venv
-conda create -n venv python=3.9 -y
-conda activate venv
-# Install requirements
-pip install -r requirements.txt
+# Create virtual env by conda from env.yml file
+conda create -f env.yml
+conda activate phnet
 ```
 
 ## Dataset
@@ -29,7 +27,7 @@ Also, we provide some pre-trained models called PHNet for demo usage.
 
 - Download link: [PHNet]()
 
-## Train
+## Train [TODO]
 You can use downloaded trained models, otherwise select the baseline and parameters for training`.
 To train the model, execute the following command:
 
@@ -38,9 +36,9 @@ python train.py ...
 ```
 
 ## Test
-Test your model by running the following command:
+Configure ```config/test.yaml``` for model evaluation. Test your model by running the following command:
 ```bash
-python test.py ...
+python test.py
 ```
 
 ## Authors and Credits
