@@ -5,42 +5,46 @@ import torch
 import torch.nn as nn
 from torchvision.utils import make_grid
 
-def lab_shift(x, invert=False):
-        x = x.float()
-        if invert:
-            x[:, 0, :, :] /= 2.55
-            x[:, 1, :, :] -= 128
-            x[:, 2, :, :] -= 128
-        else:
-            x[:, 0, :, :] *= 2.55
-            x[:, 1, :, :] += 128
-            x[:, 2, :, :] += 128
 
-        return x
-    
+def lab_shift(x, invert=False):
+    x = x.float()
+    if invert:
+        x[:, 0, :, :] /= 2.55
+        x[:, 1, :, :] -= 128
+        x[:, 2, :, :] -= 128
+    else:
+        x[:, 0, :, :] *= 2.55
+        x[:, 1, :, :] += 128
+        x[:, 2, :, :] += 128
+
+    return x
+
+
 def calculate_psnr(img1, img2):
     # img1 and img2 have range [0, 255]
     img1 = img1.astype(np.float64)
     img2 = img2.astype(np.float64)
-    mse = np.mean((img1 - img2)**2)
+    mse = np.mean((img1 - img2) ** 2)
     if mse == 0:
-        return float('inf')
-        
+        return float("inf")
+
     return 20 * math.log10(255.0 / math.sqrt(mse))
+
 
 def calculate_fpsnr(fmse):
     return 10 * math.log10(255.0 / (fmse + 1e-8))
 
+
 def tensor2img(tensor, out_type=np.uint8, min_max=(0, 1), bit=8):
-    '''
+    """
     Converts a torch Tensor into an image Numpy array
     Input: 4D(B,(3/1),H,W), 3D(C,H,W), or 2D(H,W), any range, RGB channel order
     Output: 3D(H,W,C) or 2D(H,W), [0,255], np.uint8 (default)
-    '''
+    """
     norm = float(2**bit) - 1
-    #print('before', tensor[:,:,0].max(), tensor[:,:,0].min(), '\t', tensor[:,:,1].max(), tensor[:,:,1].min(), '\t', tensor[:,:,2].max(), tensor[:,:,2].min())
+    # print('before', tensor[:,:,0].max(), tensor[:,:,0].min(), '\t', tensor[:,:,1].max(), tensor[:,:,1].min(), '\t', tensor[:,:,2].max(), tensor[:,:,2].min())
     tensor = tensor.squeeze().float().cpu().clamp_(*min_max)  # clamp
-    #print('clamp ', tensor[:,:,0].max(), tensor[:,:,0].min(), '\t', tensor[:,:,1].max(), tensor[:,:,1].min(), '\t', tensor[:,:,2].max(), tensor[:,:,2].min())
+    # print('clamp ', tensor[:,:,0].max(), tensor[:,:,0].min(), '\t', tensor[:,:,1].max(), tensor[:,:,1].min(), '\t', tensor[:,:,2].max(), tensor[:,:,2].min())
     tensor = (tensor - min_max[0]) / (min_max[1] - min_max[0])  # to range [0,1]
     n_dim = tensor.dim()
     if n_dim == 4:
@@ -54,7 +58,10 @@ def tensor2img(tensor, out_type=np.uint8, min_max=(0, 1), bit=8):
         img_np = tensor.numpy()
     else:
         raise TypeError(
-            'Only support 4D, 3D and 2D tensor. But received with dimension: {:d}'.format(n_dim))
+            "Only support 4D, 3D and 2D tensor. But received with dimension: {:d}".format(
+                n_dim
+            )
+        )
     if out_type == np.uint8:
         # Important. Unlike matlab, numpy.unit8() WILL NOT round by default.
         img_np = (img_np * norm).round()
@@ -84,7 +91,9 @@ def rgb_to_lab(image: torch.Tensor) -> torch.Tensor:
         raise TypeError(f"Input type is not a torch.Tensor. Got {type(image)}")
 
     if len(image.shape) < 3 or image.shape[-3] != 3:
-        raise ValueError(f"Input size must have a shape of (*, 3, H, W). Got {image.shape}")
+        raise ValueError(
+            f"Input size must have a shape of (*, 3, H, W). Got {image.shape}"
+        )
 
     # Convert from sRGB to Linear RGB
     lin_rgb = rgb_to_linear_rgb(image)
@@ -92,7 +101,9 @@ def rgb_to_lab(image: torch.Tensor) -> torch.Tensor:
     xyz_im: torch.Tensor = rgb_to_xyz(lin_rgb)
 
     # normalize for D65 white point
-    xyz_ref_white = torch.tensor([0.95047, 1.0, 1.08883], device=xyz_im.device, dtype=xyz_im.dtype)[..., :, None, None]
+    xyz_ref_white = torch.tensor(
+        [0.95047, 1.0, 1.08883], device=xyz_im.device, dtype=xyz_im.dtype
+    )[..., :, None, None]
     xyz_normalized = torch.div(xyz_im, xyz_ref_white)
 
     threshold = 0.008856
@@ -111,7 +122,6 @@ def rgb_to_lab(image: torch.Tensor) -> torch.Tensor:
     out: torch.Tensor = torch.stack([L, a, _b], dim=-3)
 
     return out
-
 
 
 def lab_to_rgb(image: torch.Tensor, clip: bool = True) -> torch.Tensor:
@@ -136,7 +146,9 @@ def lab_to_rgb(image: torch.Tensor, clip: bool = True) -> torch.Tensor:
         raise TypeError(f"Input type is not a torch.Tensor. Got {type(image)}")
 
     if len(image.shape) < 3 or image.shape[-3] != 3:
-        raise ValueError(f"Input size must have a shape of (*, 3, H, W). Got {image.shape}")
+        raise ValueError(
+            f"Input size must have a shape of (*, 3, H, W). Got {image.shape}"
+        )
 
     L: torch.Tensor = image[..., 0, :, :]
     a: torch.Tensor = image[..., 1, :, :]
@@ -157,7 +169,9 @@ def lab_to_rgb(image: torch.Tensor, clip: bool = True) -> torch.Tensor:
     xyz = torch.where(fxyz > 0.2068966, power, scale)
 
     # For D65 white point
-    xyz_ref_white = torch.tensor([0.95047, 1.0, 1.08883], device=xyz.device, dtype=xyz.dtype)[..., :, None, None]
+    xyz_ref_white = torch.tensor(
+        [0.95047, 1.0, 1.08883], device=xyz.device, dtype=xyz.dtype
+    )[..., :, None, None]
     xyz_im = xyz * xyz_ref_white
 
     rgbs_im: torch.Tensor = xyz_to_rgb(xyz_im)
@@ -194,7 +208,9 @@ def rgb_to_xyz(image: torch.Tensor) -> torch.Tensor:
         raise TypeError(f"Input type is not a torch.Tensor. Got {type(image)}")
 
     if len(image.shape) < 3 or image.shape[-3] != 3:
-        raise ValueError(f"Input size must have a shape of (*, 3, H, W). Got {image.shape}")
+        raise ValueError(
+            f"Input size must have a shape of (*, 3, H, W). Got {image.shape}"
+        )
 
     r: torch.Tensor = image[..., 0, :, :]
     g: torch.Tensor = image[..., 1, :, :]
@@ -226,15 +242,23 @@ def xyz_to_rgb(image: torch.Tensor) -> torch.Tensor:
         raise TypeError(f"Input type is not a torch.Tensor. Got {type(image)}")
 
     if len(image.shape) < 3 or image.shape[-3] != 3:
-        raise ValueError(f"Input size must have a shape of (*, 3, H, W). Got {image.shape}")
+        raise ValueError(
+            f"Input size must have a shape of (*, 3, H, W). Got {image.shape}"
+        )
 
     x: torch.Tensor = image[..., 0, :, :]
     y: torch.Tensor = image[..., 1, :, :]
     z: torch.Tensor = image[..., 2, :, :]
 
-    r: torch.Tensor = 3.2404813432005266 * x + -1.5371515162713185 * y + -0.4985363261688878 * z
-    g: torch.Tensor = -0.9692549499965682 * x + 1.8759900014898907 * y + 0.0415559265582928 * z
-    b: torch.Tensor = 0.0556466391351772 * x + -0.2040413383665112 * y + 1.0573110696453443 * z
+    r: torch.Tensor = (
+        3.2404813432005266 * x + -1.5371515162713185 * y + -0.4985363261688878 * z
+    )
+    g: torch.Tensor = (
+        -0.9692549499965682 * x + 1.8759900014898907 * y + 0.0415559265582928 * z
+    )
+    b: torch.Tensor = (
+        0.0556466391351772 * x + -0.2040413383665112 * y + 1.0573110696453443 * z
+    )
 
     out: torch.Tensor = torch.stack([r, g, b], dim=-3)
 
@@ -260,9 +284,13 @@ def rgb_to_linear_rgb(image: torch.Tensor) -> torch.Tensor:
         raise TypeError(f"Input type is not a torch.Tensor. Got {type(image)}")
 
     if len(image.shape) < 3 or image.shape[-3] != 3:
-        raise ValueError(f"Input size must have a shape of (*, 3, H, W).Got {image.shape}")
+        raise ValueError(
+            f"Input size must have a shape of (*, 3, H, W).Got {image.shape}"
+        )
 
-    lin_rgb: torch.Tensor = torch.where(image > 0.04045, torch.pow(((image + 0.055) / 1.055), 2.4), image / 12.92)
+    lin_rgb: torch.Tensor = torch.where(
+        image > 0.04045, torch.pow(((image + 0.055) / 1.055), 2.4), image / 12.92
+    )
 
     return lin_rgb
 
@@ -284,11 +312,15 @@ def linear_rgb_to_rgb(image: torch.Tensor) -> torch.Tensor:
         raise TypeError(f"Input type is not a torch.Tensor. Got {type(image)}")
 
     if len(image.shape) < 3 or image.shape[-3] != 3:
-        raise ValueError(f"Input size must have a shape of (*, 3, H, W).Got {image.shape}")
+        raise ValueError(
+            f"Input size must have a shape of (*, 3, H, W).Got {image.shape}"
+        )
 
     threshold = 0.0031308
     rgb: torch.Tensor = torch.where(
-        image > threshold, 1.055 * torch.pow(image.clamp(min=threshold), 1 / 2.4) - 0.055, 12.92 * image
+        image > threshold,
+        1.055 * torch.pow(image.clamp(min=threshold), 1 / 2.4) - 0.055,
+        12.92 * image,
     )
 
     return rgb
