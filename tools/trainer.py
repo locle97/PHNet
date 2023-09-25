@@ -18,12 +18,12 @@ import tqdm
 import datetime
 import glob
 import lpips
-from model import *
+from .model import *
 from lion_pytorch import Lion
-from losses import *
-from util import calculate_psnr, tensor2img, calculate_fpsnr
+from .losses import *
+from .util import calculate_psnr, tensor2img, calculate_fpsnr
 from torch import distributed as dist
-from dataset import *
+from .dataset import *
 
 
 class Trainer:
@@ -64,7 +64,6 @@ class Trainer:
                 world_size=world_size,
             )
         else:
-            # dist.init_process_group("gloo", rank=rank, world_size=world_size)
             dist.init_process_group("nccl", rank=rank, world_size=world_size)
 
     def find_free_port(self):
@@ -79,7 +78,8 @@ class Trainer:
         self.train_dataset = globals()[self.args.dataset_to_use_train](
             is_train=True, opt=self.args.datasets
         )
-        self.log(f"Initializing dataset {len(self.train_dataset)}", level="LOG")
+        self.log(
+            f"Initializing dataset {len(self.train_dataset)}", level="LOG")
 
         self.train_dataloader = DataLoader(
             dataset=self.train_dataset,
@@ -118,7 +118,8 @@ class Trainer:
         ).to(self.rank)
 
         if self.args.load_pretrained:
-            self.log(f"Restoring from checkpoint: {self.args.checkpoint}", level="LOG")
+            self.log(
+                f"Restoring from checkpoint: {self.args.checkpoint}", level="LOG")
             self.load_checkpoint(self.args.checkpoint)
 
         self.model_ddp = DDP(
@@ -130,7 +131,8 @@ class Trainer:
         self.lpips_loss = lpips.LPIPS(net="vgg").to(self.rank)
         self.psnr_loss = PSNRLoss(max_val=1).to(self.rank)
         self.color_loss = L_color().to(self.rank)
-        self.gradient_loss = GradientLoss(loss_f=torch.nn.L1Loss()).to(self.rank)
+        self.gradient_loss = GradientLoss(
+            loss_f=torch.nn.L1Loss()).to(self.rank)
         # self.optimizer = torch.optim.AdamW(
         #     self.model_ddp.parameters(), lr=self.args.lr)
         self.optimizer = Lion(self.model_ddp.parameters(), lr=self.args.lr)
@@ -150,14 +152,16 @@ class Trainer:
     def init_writer(self):
         if self.rank == 0:
             self.timestamp = f"{datetime.datetime.now():%d_%B_%H_%M}"
-            os.makedirs(f"{self.args.checkpoint_dir}/{self.timestamp}", exist_ok=True)
+            os.makedirs(
+                f"{self.args.checkpoint_dir}/{self.timestamp}", exist_ok=True)
             self.log("CHECKPOINT CREATED")
             for src_file in (
                 glob.glob("*.py")
                 + glob.glob("config/*.yaml")
-                + glob.glob("trainer/*.py")
+                + glob.glob("tools/*.py")
             ):
-                shutil.copy(src_file, f"{self.args.checkpoint_dir}/{self.timestamp}/")
+                shutil.copy(
+                    src_file, f"{self.args.checkpoint_dir}/{self.timestamp}/")
             # self.logger = logging.getLogger()
             # self.logger.setLevel(logging.INFO)
             # fh = logging.FileHandler(f"{self.args.checkpoint_dir}/{self.timestamp}/logs.log")
@@ -201,14 +205,13 @@ class Trainer:
         path = input_dict["img_path"]
         revert_mask = (1 - mask).to(self.rank)
         with autocast(enabled=not self.args.disable_mixed_precision):
-            predicted = self.model_ddp(composite, mask)["harmonized"]
+            predicted = self.model_ddp(composite, mask)
             predicted_blend = predicted * mask + composite * (1 - mask)
             losses = {}
             losses["PSNR"] = self.psnr_loss(input=predicted, target=real)
             losses["Color"] = self.color_loss(predicted).sum()
-
             # losses["combined"] = torch.nn.MSELoss()(real * mask, predicted * mask) + torch.nn.L1Loss()(real * revert_mask, predicted * revert_mask)
-            # losses['gradient'] = self.gradient_loss(real*mask, predicted*mask)
+            # losses["gradient"] = self.gradient_loss(real*mask, predicted*mask)
             losses["LPIPS"] = self.lpips_loss(
                 self.normalize(real), self.normalize(predicted)
             ).mean()
@@ -287,7 +290,8 @@ class Trainer:
                         composite = input_dict["comp"].to(self.rank)
                         real = input_dict["real"].to(self.rank)
                         mask = input_dict["mask"].to(self.rank)
-                        harmonized = self.model_ddp(composite, mask)["harmonized"]
+                        harmonized = self.model_ddp(composite, mask)[
+                            "harmonized"]
                         # harmonized_np = np.array(harmonized.detach().cpu(), dtype=np.float32)
                         # real_np = np.array(real.detach().cpu(), dtype=np.float32) * 255.
                         blending = mask * harmonized + (1 - mask) * composite
@@ -296,15 +300,18 @@ class Trainer:
                         real_img = tensor2img(real, bit=8)
                         psnr_score = calculate_psnr(blending_img, real_img)
                         fore_area = torch.sum(mask)
-                        fore_ratio = fore_area / (mask.shape[-1] * mask.shape[-2]) * 100
+                        fore_ratio = fore_area / \
+                            (mask.shape[-1] * mask.shape[-2]) * 100
                         # print(fore_area, mask.max(), mask.shape[-1] * mask.shape[-2])
-                        mse_score = torch.nn.functional.mse_loss(blending, real)
+                        mse_score = torch.nn.functional.mse_loss(
+                            blending, real)
                         mse_score_img = torch.nn.functional.mse_loss(
                             torch.from_numpy(blending_img).float(),
                             torch.from_numpy(real_img).float(),
                         )
                         fmse_score = (
-                            tensor2img(blending * mask - real * mask, bit=9) ** 2
+                            tensor2img(blending * mask -
+                                       real * mask, bit=9) ** 2
                         ).sum() / fore_area
                         fpsnr_score = calculate_fpsnr(fmse_score)
                         if fore_ratio < 5:
@@ -346,13 +353,17 @@ class Trainer:
                 fmse_scores_ratio[k] /= ratio_count[k] + 1e-8
             # avg_loss = total_loss / total_count
             self.log(f"Dataset: {subset}, Validation setresults:", level="LOG")
-            self.log(f"Validation set psnr score: {psnr_scores_mu}", level="LOG")
+            self.log(
+                f"Validation set psnr score: {psnr_scores_mu}", level="LOG")
             self.writer.add_scalar(f"{subset} psnr", psnr_scores_mu, step)
-            self.log(f"Validation set fpsnr score: {fpsnr_scores_mu}", level="LOG")
+            self.log(
+                f"Validation set fpsnr score: {fpsnr_scores_mu}", level="LOG")
             self.writer.add_scalar(f"{subset} fpsnr", fpsnr_scores_mu, step)
-            self.log(f"Validation set MSE score: {mse_score_img_mu}", level="LOG")
+            self.log(
+                f"Validation set MSE score: {mse_score_img_mu}", level="LOG")
             self.writer.add_scalar(f"{subset} mse", mse_score_img_mu, step)
-            self.log(f"Validation set fMSE score: {fmse_score_mu}", level="LOG")
+            self.log(
+                f"Validation set fMSE score: {fmse_score_mu}", level="LOG")
             self.writer.add_scalar(f"{subset} fmse", fmse_score_mu, step)
             self.log(
                 f"PSNR: {psnr_scores_mu}, FPSNR: {fpsnr_scores_mu}, mse img: {mse_score_img_mu}",
@@ -363,7 +374,8 @@ class Trainer:
     def save(self):
         if self.rank == 0:
             self.model.eval()
-            os.makedirs(f"{self.args.checkpoint_dir}/{self.timestamp}", exist_ok=True)
+            os.makedirs(
+                f"{self.args.checkpoint_dir}/{self.timestamp}", exist_ok=True)
             torch.save(
                 self.model.state_dict(),
                 f"{self.args.checkpoint_dir}/{self.timestamp}/epoch-{self.epoch}.pth",
