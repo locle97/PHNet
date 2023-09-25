@@ -9,37 +9,61 @@ For more information see our paper [PHNet: Patch-based Normalization for Image H
 ## Installation
 Clone and install required python packages:
 ```bash
-git clone <repo>
-cd <repo>
+git clone https://github.com/befozg/PHNet.git
+cd PHNet
 # Create virtual env by conda from env.yml file
 conda create -f env.yml
 conda activate phnet
+
+# or install packages using pip
+pip install -r requirements.txt
 ```
 
 ## Dataset
 We present Flickr-Faces-HQ-Harmonization (FFHQH), a new dataset for portrait harmonization based on the [FFHQ](https://github.com/NVlabs/ffhq-dataset). It contains real images, foreground masks, and synthesized composites. 
 
-- Download link: [FFHQH]()
+- Download link: [FFHQH](https://n-ws-620xz-pd11.s3pd11.sbercloud.ru/b-ws-620xz-pd11-jux/harmonization/synthetic_ffhq.zip)
 
 
-## Models
+## Model Zoo
 Also, we provide some pre-trained models called PHNet for demo usage.
 
-- Download link: [PHNet]()
+| State file                           | Where to place                                   | Download |
+|-----------------------------------|-------------------------------------------|----|
+| Trained on iHarmony4, 512x512   |   `checkpoints/`        | [iharmony512.pth](https://n-ws-620xz-pd11.s3pd11.sbercloud.ru/b-ws-620xz-pd11-jux/harmonization/iharmony512.pth)|
+| Fine-tuned on FFHQH, 1024x1024    |   `checkpoints/`        | [ffhqh1024.pth](https://n-ws-620xz-pd11.s3pd11.sbercloud.ru/b-ws-620xz-pd11-jux/harmonization/ffhqh1024.pth) |
+| Fine-tuned on FFHQH, 512x512    |   `checkpoints/`        | [ffhqh1024.pth](https://n-ws-620xz-pd11.s3pd11.sbercloud.ru/b-ws-620xz-pd11-jux/harmonization/ffhqh512.pth) |
+
+To run complete portrait transfer demo, also refer to (StyleMatte)[https://github.com/befozg/stylematte] to download matting network checkpoints. Place them in `checkpoints/` directory.
 
 ## Train [TODO]
 You can use downloaded trained models, otherwise select the baseline and parameters for training`.
 To train the model, execute the following command:
 
 ```bash
-python train.py ...
+python train.py
 ```
 
+Refer to our ```config/train512.yaml``` or ```config/train1024.yaml``` for training details.
+
 ## Test
-Configure ```config/test.yaml``` for model evaluation. Test your model by running the following command:
+To test the model, execute the following command:
+
 ```bash
 python test.py
 ```
+
+Refer to our ```config/test.yaml``` for training details.
+
+
+## Run demo
+To run the demo app locally, execute the following command:
+
+```bash
+python app.py
+```
+
+You can enable link sharing option to create global link in ```app.py```. Then follow to ```http://127.0.0.1:7860``` on your localhost to try out the application.
 
 ## Authors and Credits
 - [Karen Efremyan](https://www.linkedin.com/in/befozg/)
