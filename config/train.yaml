@@ -18,9 +18,7 @@ num_workers: 4
 log_dir: "log"
 checkpoint_dir: "checkpoints"
 load_pretrained: True
-# checkpoint: "/home/jovyan/efremyan/harmonization/best_50.pth"
-# checkpoint: "/home/jovyan/efremyan/harmonization/checkpoints/01_August_13_38/epoch-13.pth"
-checkpoint: "/home/jovyan/efremyan/harmonization/checkpoints/03_August_23_36/epoch-42.pth"
+checkpoint: "best.pth"
 distributed_addr: "localhost"
 # distributed_port: "12356"
 # image_size: 512
