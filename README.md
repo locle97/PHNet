@@ -64,11 +64,6 @@ python app.py
 Refer to our ```config/demo.yaml``` for demo details.
 You can enable link sharing option to create global link in ```app.py```. Then follow to ```http://127.0.0.1:7860``` on your localhost to try out the application.
 
-## Authors and Credits
-- [Karen Efremyan](https://www.linkedin.com/in/befozg/)
-- [Elizaveta Petrova](https://www.linkedin.com/in/kleinsbotle/)
-- [Alexander Kapitanov](https://www.linkedin.com/in/hukenovs)
-
 ## Links
 - [Github](https://github.com/befozg/PHNet/)
 - [Mirror](https://gitlab.aicloud.sbercloud.ru/rndcv/PHNet)
@@ -77,16 +72,6 @@ You can enable link sharing option to create global link in ```app.py```. Then f
 - [Habr]()
 - [Medium]()
 - [Paperswithcode]()
-
-## Citation
-You can cite the paper using the following BibTeX entry:
-
-    @article{phnet,
-        title={PHNet: Patch-based Normalization for Image Harmonization},
-        author={Efremyan, Karen and Petrova, Elizaveta and Kapitanov, Alexander},
-        journal={arXiv preprint arXiv:},
-        year={2022}
-    }
 
 
 ### License
