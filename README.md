@@ -64,16 +64,6 @@ python app.py
 Refer to our ```config/demo.yaml``` for demo details.
 You can enable link sharing option to create global link in ```app.py```. Then follow to ```http://127.0.0.1:7860``` on your localhost to try out the application.
 
-## Links
-- [Github](https://github.com/befozg/PHNet/)
-- [Mirror](https://gitlab.aicloud.sbercloud.ru/rndcv/PHNet)
-- [arXiv]()
-- [Kaggle FFHQH]()
-- [Habr]()
-- [Medium]()
-- [Paperswithcode]()
-
-
 ### License
 <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a><br />This work is licensed under a variant of <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
 
