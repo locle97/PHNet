@@ -44,7 +44,7 @@ To train the model, execute the following command:
 python train.py
 ```
 
-Refer to our ```config/train512.yaml``` or ```config/train1024.yaml``` for training details.
+Refer to our ```config/train.yaml```  for training details.
 
 ## Test
 To test the model, execute the following command:
@@ -52,9 +52,7 @@ To test the model, execute the following command:
 ```bash
 python test.py
 ```
-
-Refer to our ```config/test.yaml``` for training details.
-
+Refer to our ```config/test.yaml``` for inference details.
 
 ## Run demo
 To run the demo app locally, execute the following command:
@@ -63,6 +61,7 @@ To run the demo app locally, execute the following command:
 python app.py
 ```
 
+Refer to our ```config/demo.yaml``` for demo details.
 You can enable link sharing option to create global link in ```app.py```. Then follow to ```http://127.0.0.1:7860``` on your localhost to try out the application.
 
 ## Authors and Credits

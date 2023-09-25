@@ -1,25 +1,30 @@
 world_size: 4
-batch_size: 4
-num_workers: 4
-experiment_name: 'test'
+experiment_name: 'FFHQH_SEHARM_1024_FINAL'
 datasets:
     iharmony: "/home/jovyan/datasets/iHarmony4/"
-    crop_size: 512
+    crop_size: 1024
+    # dataset_root: "/home/jovyan/datasets/iHarmony4/"
     ffhqh: "/home/jovyan/datasets/synthetic_ffhq/"
     dataset_root: "/home/jovyan/datasets/synthetic_ffhq/"
     ffhq: "/home/jovyan/datasets/ffhq/images1024x1024/"
     isTrain: True
-datasets_to_use_test: ["IhdDataset"]
-dataset_to_use_train: "IhdDataset"
-#["IhdDataset", "HCOCO", "HFlickr", "Hday2night", "HAdobe5k", 
+task_for_oneformer: "matting"
+datasets_to_use_test: ["FFHQH"]
+#"IhdDataset", "HCOCO", "HFlickr", "Hday2night", "HAdobe5k", "FFHQH"]
+dataset_to_use: "FFHQH"
+pretrained_model: 'microsoft/swin-base-patch4-window7-224' #"microsoft/swinv2-tiny-patch4-window8-256"  #"nielsr/mask2former-swin-base-youtubevis-2021" #"nvidia/mit-b2"
+batch_size: 4
+num_workers: 4
 log_dir: "log"
 checkpoint_dir: "checkpoints"
 load_pretrained: True
-checkpoint: "checkpoints/best_pure.pth"
+# checkpoint: "/home/jovyan/efremyan/harmonization/best_50.pth"
+# checkpoint: "/home/jovyan/efremyan/harmonization/checkpoints/01_August_13_38/epoch-13.pth"
+checkpoint: "/home/jovyan/efremyan/harmonization/checkpoints/03_August_23_36/epoch-42.pth"
 distributed_addr: "localhost"
 # distributed_port: "12356"
 # image_size: 512
-lr: 1e-4
+lr: 1e-5
 epochs: 300
 disable_validation: False
 disable_mixed_precision: False
