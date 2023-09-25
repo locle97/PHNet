@@ -34,7 +34,6 @@ Also, we provide some pre-trained models called PHNet for demo usage.
 | Fine-tuned on FFHQH, 1024x1024    |   `checkpoints/`        | [ffhqh1024.pth](https://n-ws-620xz-pd11.s3pd11.sbercloud.ru/b-ws-620xz-pd11-jux/harmonization/ffhqh1024.pth) |
 | Fine-tuned on FFHQH, 512x512    |   `checkpoints/`        | [ffhqh1024.pth](https://n-ws-620xz-pd11.s3pd11.sbercloud.ru/b-ws-620xz-pd11-jux/harmonization/ffhqh512.pth) |
 
-To run complete portrait transfer demo, also refer to [StyleMatte](https://github.com/befozg/stylematte) to download matting network checkpoints. Place them in `checkpoints/` directory.
 
 ## Train [TODO]
 You can use downloaded trained models, otherwise select the baseline and parameters for training`.
