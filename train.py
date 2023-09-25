@@ -1,8 +1,8 @@
-from trainer import Trainer
 from omegaconf import OmegaConf
 from torch import multiprocessing as mp
 from torch import distributed as dist
 import os
+from tools import Trainer, log
 import sys
 import socket
 from contextlib import closing
@@ -25,12 +25,12 @@ if __name__ == "__main__":
     os.environ["MASTER_ADDR"] = args.distributed_addr
     os.environ["MASTER_PORT"] = find_free_port()
     world_size = args.world_size  # torch.cuda.device_count()
-    print(f"start train on {world_size} GPU")
+    log(f"start train on {world_size} GPU")
     if world_size == 1:
         trainer = Trainer(0, 1, args=args)
     else:
         try:
-            print("STARTING SPAWN")
+            log("STARTING SPAWN")
             # mp.set_start_method('spawn', force=True)
             mp.spawn(
                 Trainer,
@@ -42,7 +42,7 @@ if __name__ == "__main__":
                 join=True,
             )
         except KeyboardInterrupt:
-            print("Interrupted")
+            log("Interrupted")
             try:
                 dist.destroy_process_group()
             except KeyboardInterrupt:

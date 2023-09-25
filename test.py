@@ -1,4 +1,4 @@
-from trainer import Inference
+from tools import Inference
 from omegaconf import OmegaConf
 import os
 import sys
@@ -26,7 +26,8 @@ def predict(comp, mask):
 
 if __name__ == "__main__":
     args = OmegaConf.load(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), f"config/test.yaml")
+        os.path.join(os.path.dirname(
+            os.path.abspath(__file__)), f"config/test.yaml")
     )
 
     infer = Inference(**args)
