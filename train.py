@@ -19,7 +19,7 @@ def find_free_port():
 if __name__ == "__main__":
     args = OmegaConf.load(
         os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                     f"config/base512.yaml")
+                     f"config/train.yaml")
     )
 
     os.environ["MASTER_ADDR"] = args.distributed_addr
