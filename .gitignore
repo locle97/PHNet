@@ -162,3 +162,5 @@ cython_debug/
 trainer/__pycache__/
 trainer/__pycache__/*
 __pycache__/*
+
+checkpoints/*.pth
