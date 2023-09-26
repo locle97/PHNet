@@ -10,6 +10,7 @@ datasets:
     isTrain: True
 task_for_oneformer: "matting"
 datasets_to_use_test: ["FFHQH"]
+dataset_to_use_train: "FFHQH"
 #"IhdDataset", "HCOCO", "HFlickr", "Hday2night", "HAdobe5k", "FFHQH"]
 dataset_to_use: "FFHQH"
 pretrained_model: 'microsoft/swin-base-patch4-window7-224' #"microsoft/swinv2-tiny-patch4-window8-256"  #"nielsr/mask2former-swin-base-youtubevis-2021" #"nvidia/mit-b2"
@@ -18,7 +19,7 @@ num_workers: 4
 log_dir: "log"
 checkpoint_dir: "checkpoints"
 load_pretrained: True
-checkpoint: "best.pth"
+checkpoint: "checkpoints/best_pure.pth"
 distributed_addr: "localhost"
 # distributed_port: "12356"
 # image_size: 512

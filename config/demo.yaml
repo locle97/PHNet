@@ -5,8 +5,8 @@ init_value: 0.8
 skips: True
 device: 'cpu'
 checkpoint: 
-  matting_onnx: "checkpoints/stylematte_720.onnx"
-  harmonizer: "checkpoints/best_pure.pth"
-  matting: "checkpoints/stylematte.pth"
+  matting_onnx: "../checkpoints/stylematte_720.onnx"
+  harmonizer: "../checkpoints/best_pure.pth"
+  matting: "../checkpoints/stylematte.pth"
 onnx: False
 image_size: 1024
