@@ -164,3 +164,8 @@ trainer/__pycache__/*
 __pycache__/*
 
 checkpoints/*.pth
+*.html
+live_*.py
+converter.py
+app.py
+*/stylematte.py

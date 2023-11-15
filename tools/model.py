@@ -12,13 +12,6 @@ import numpy as np
 from .normalizer import PatchNormalizer, PatchedHarmonizer
 from .util import rgb_to_lab, lab_to_rgb, lab_shift
 
-# from shtools import *
-# from color_converters import luv_to_rgb, rgb_to_luv
-# from skimage import io, transform
-'''
-    Input (256,512,3)
-'''
-
 
 def inpaint_bg(comp, mask, dim=[2, 3]):
     """
