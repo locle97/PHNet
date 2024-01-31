@@ -2,7 +2,7 @@
 
 We present a patch-based harmonization network consisting of novel Patch-based normalization (PN) blocks and a feature extractor based on statistical color transfer. We evaluate our approach on available image harmonization datasets. Extensive experiments demonstrate the network's high generalization capability for different domains. Additionally, we collected a new dataset focused on portrait harmonization. Our network achieves state-of-the-art results on iHarmony4 and gains the best metrics on the synthetic portrait dataset.
 
-![example](assets/scheme.jpg)
+![example](assets/scheme.png)
 
 For more information see our paper [PHNet: Patch-based Normalization for Image Harmonization](https://arxiv.org).
 
@@ -31,8 +31,9 @@ Also, we provide some pre-trained models called PHNet for demo usage.
 | State file                           | Where to place                                   | Download |
 |-----------------------------------|-------------------------------------------|----|
 | Trained on iHarmony4, 512x512   |   `checkpoints/`        | [iharmony512.pth](https://n-ws-620xz-pd11.s3pd11.sbercloud.ru/b-ws-620xz-pd11-jux/harmonization/iharmony512.pth)|
-| Fine-tuned on FFHQH, 1024x1024    |   `checkpoints/`        | [ffhqh1024.pth](https://n-ws-620xz-pd11.s3pd11.sbercloud.ru/b-ws-620xz-pd11-jux/harmonization/ffhqh1024.pth) |
-| Fine-tuned on FFHQH, 512x512    |   `checkpoints/`        | [ffhqh1024.pth](https://n-ws-620xz-pd11.s3pd11.sbercloud.ru/b-ws-620xz-pd11-jux/harmonization/ffhqh512.pth) |
+| Trained on FFHQH, 1024x1024    |   `checkpoints/`        | [ffhqh1024.pth](https://n-ws-620xz-pd11.s3pd11.sbercloud.ru/b-ws-620xz-pd11-jux/harmonization/ffhqh1024.pth) |
+| Trained on FFHQH, 512x512    |   `checkpoints/`        | [ffhqh1024.pth](https://n-ws-620xz-pd11.s3pd11.sbercloud.ru/b-ws-620xz-pd11-jux/harmonization/ffhqh512.pth) |
+| Trained on FFHQH, 256x256    |   `checkpoints/`        | [ffhqh1024.pth](https://n-ws-620xz-pd11.s3pd11.sbercloud.ru/b-ws-620xz-pd11-jux/harmonization/ffhqh256.pth) |
 
 
 ## Train [TODO]

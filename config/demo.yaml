@@ -6,7 +6,7 @@ skips: True
 device: 'cpu'
 checkpoint: 
   matting_onnx: "../checkpoints/stylematte_720.onnx"
-  harmonizer: "../checkpoints/best_pure.pth"
+  harmonizer: "../checkpoints/best_iharmony.pth"
   matting: "../checkpoints/stylematte.pth"
 onnx: False
 image_size: 1024

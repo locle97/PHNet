@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.cuda.amp import autocast, GradScaler
 from torch.utils.data import DataLoader
-from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.lr_scheduler import CosineAnnealingLR, ReduceLROnPlateau
 from torch.utils.data.distributed import DistributedSampler
 import torchvision
 import matplotlib.pyplot as plt
@@ -20,7 +20,8 @@ import glob
 import lpips
 from .model import *
 from lion_pytorch import Lion
-from .losses import *
+from .losses import PSNRLoss, PSNRLossPositive, L_color, GradientLoss, FnMSE
+from .metrics import PSNR, fPSNR, MSE, fMSE
 from .util import calculate_psnr, tensor2img, calculate_fpsnr
 from torch import distributed as dist
 from .dataset import *
@@ -74,12 +75,10 @@ class Trainer:
             return str(s.getsockname()[1])
 
     def init_datasets(self):
-        psis = [-0.5, -0.4, -0.3, -0.2, -0.1, 0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
         self.train_dataset = globals()[self.args.dataset_to_use_train](
-            is_train=True, opt=self.args.datasets
+            opt=self.args.datasets, stage="train", apply_augs=True
         )
-        self.log(
-            f"Initializing dataset {len(self.train_dataset)}", level="LOG")
+        self.log(f"Initializing dataset {len(self.train_dataset)}", level="LOG")
 
         self.train_dataloader = DataLoader(
             dataset=self.train_dataset,
@@ -89,22 +88,20 @@ class Trainer:
             persistent_workers=True,
         )
 
-        self.test_dataloaders = dict()
-        for subset in self.args.datasets_to_use_test:
+        self.val_dataloaders = dict()
+        for subset in self.args.datasets_to_use_val:
             dataset = subset
-            if subset != "FFHQH":
-                dataset = "IhdDataset"
-            test_dataset = globals()[dataset](
-                is_train=False, subset=subset, opt=self.args.datasets
+            val_dataset = globals()[dataset](
+                opt=self.args.datasets, stage="val", apply_augs=False
             )
-            test_dataloader = DataLoader(
-                dataset=test_dataset,
-                sampler=DistributedSampler(test_dataset, rank=self.rank),
+            val_dataloader = DataLoader(
+                dataset=val_dataset,
+                sampler=DistributedSampler(val_dataset, rank=self.rank),
                 batch_size=1,
                 num_workers=self.args.num_workers,
                 persistent_workers=True,
             )
-            self.test_dataloaders[subset] = test_dataloader
+            self.val_dataloaders[subset] = val_dataloader
 
     def init_model(self, model_decoder="UnetDecoder"):
         self.log("Initializing model")
@@ -118,8 +115,7 @@ class Trainer:
         ).to(self.rank)
 
         if self.args.load_pretrained:
-            self.log(
-                f"Restoring from checkpoint: {self.args.checkpoint}", level="LOG")
+            self.log(f"Restoring from checkpoint: {self.args.checkpoint}", level="LOG")
             self.load_checkpoint(self.args.checkpoint)
 
         self.model_ddp = DDP(
@@ -129,15 +125,17 @@ class Trainer:
             find_unused_parameters=True,
         )
         self.lpips_loss = lpips.LPIPS(net="vgg").to(self.rank)
-        self.psnr_loss = PSNRLoss(max_val=1).to(self.rank)
+        # self.psnr_loss = PSNRLoss(max_val=1).to(self.rank)
+        self.psnr_loss = PSNRLossPositive(max_val=1).to(self.rank)
+        self.fnmse_loss = FnMSE(min_area=100.0).to(self.rank)
         self.color_loss = L_color().to(self.rank)
-        self.gradient_loss = GradientLoss(
-            loss_f=torch.nn.L1Loss()).to(self.rank)
+        self.gradient_loss = GradientLoss(loss_f=torch.nn.L1Loss()).to(self.rank)
         # self.optimizer = torch.optim.AdamW(
         #     self.model_ddp.parameters(), lr=self.args.lr)
         self.optimizer = Lion(self.model_ddp.parameters(), lr=self.args.lr)
         self.scaler = GradScaler()
         self.scheduler = CosineAnnealingLR(self.optimizer, T_max=100)
+        # self.scheduler = ReduceLROnPlateau(optimizer=self.optimizer, mode='min')
 
     def load_checkpoint(self, checkpoint=None):
         if checkpoint is None:
@@ -152,16 +150,12 @@ class Trainer:
     def init_writer(self):
         if self.rank == 0:
             self.timestamp = f"{datetime.datetime.now():%d_%B_%H_%M}"
-            os.makedirs(
-                f"{self.args.checkpoint_dir}/{self.timestamp}", exist_ok=True)
+            os.makedirs(f"{self.args.checkpoint_dir}/{self.timestamp}", exist_ok=True)
             self.log("CHECKPOINT CREATED")
             for src_file in (
-                glob.glob("*.py")
-                + glob.glob("config/*.yaml")
-                + glob.glob("tools/*.py")
+                glob.glob("*.py") + glob.glob("config/*.yaml") + glob.glob("tools/*.py")
             ):
-                shutil.copy(
-                    src_file, f"{self.args.checkpoint_dir}/{self.timestamp}/")
+                shutil.copy(src_file, f"{self.args.checkpoint_dir}/{self.timestamp}/")
             # self.logger = logging.getLogger()
             # self.logger.setLevel(logging.INFO)
             # fh = logging.FileHandler(f"{self.args.checkpoint_dir}/{self.timestamp}/logs.log")
@@ -176,28 +170,29 @@ class Trainer:
     def train(self):
         self.log(f"training for {self.args.epochs} epochs", level="LOG")
         self.log(f"Number of steps: {len(self.train_dataloader)}", level="LOG")
-
+        psnr_thrsh = 34.0
         for epoch in range(self.args.epochs):
             self.epoch = epoch
             self.train_dataloader.sampler.set_epoch(epoch)
             total_step = epoch * len(self.train_dataloader)
-            if not self.args.disable_validation:
-                if epoch > 0:
-                    for subset in self.test_dataloaders.keys():
-                        self.validate(epoch, subset=subset)
 
             self.log(f"Training epoch: {epoch}", level="LOG")
             self.model_ddp.train()
 
             for i, input_dict in tqdm.tqdm(enumerate(self.train_dataloader)):
-                self.train_step(input_dict, total_step + i)
+                self.train_step(input_dict, total_step + i, epoch)
+                # self.scheduler.step()
 
-            if epoch % self.args.save_model_interval == 0:
-                self.save()
+            if not self.args.disable_validation:
+                for subset in self.val_dataloaders.keys():
+                    val_metrics = self.validate(epoch, subset=subset)
+                    if self.rank == 0 and val_metrics["psnr"] >= psnr_thrsh:
+                        self.save()
+                # if epoch % self.args.save_model_interval == 0:
 
-            self.scheduler.step()
+            # self.scheduler.step()
 
-    def train_step(self, input_dict, step):
+    def train_step(self, input_dict, step, epoch):
         inputs = input_dict["inputs"].to(self.rank)
         composite = input_dict["comp"].to(self.rank)
         real = input_dict["real"].to(self.rank)
@@ -209,9 +204,14 @@ class Trainer:
             predicted_blend = predicted * mask + composite * (1 - mask)
             losses = {}
             losses["PSNR"] = self.psnr_loss(input=predicted, target=real)
-            losses["Color"] = self.color_loss(predicted).sum()
+            losses["FnMSE"] = self.fnmse_loss(
+                pred=predicted, target=real, mask=mask
+            ).mean()
+            # losses["PSNR"] = self.psnr_loss(input=predicted, target=real)
             # losses["combined"] = torch.nn.MSELoss()(real * mask, predicted * mask) + torch.nn.L1Loss()(real * revert_mask, predicted * revert_mask)
-            # losses["gradient"] = self.gradient_loss(real*mask, predicted*mask)
+            losses["Gradient"] = self.gradient_loss(real * mask, predicted * mask)
+            if epoch > 100:
+                losses["Color"] = self.color_loss(predicted).sum()
             losses["LPIPS"] = self.lpips_loss(
                 self.normalize(real), self.normalize(predicted)
             ).mean()
@@ -229,6 +229,10 @@ class Trainer:
                 self.log(f"loss[{key}]={losses[key]}")
                 if self.rank == 0:
                     self.writer.add_scalar(f"loss_{key}", losses[key], step)
+            # if self.rank == 0:
+            # self.writer.add_scalar(f"learning_rate", self.optimizer.param_groups[-1]['lr'], step)
+            # self.writer.add_scalar(f"learning_rate", self.scheduler.get_last_lr(), step)
+
             self.log(f"total loss:{total_loss}", level="LOG")
 
         # total_loss.backward()
@@ -282,38 +286,25 @@ class Trainer:
             mse_scores_ratio = {"5": 0, "15": 0, "100": 0}
             ratio_count = {"5": 0, "15": 0, "100": 0}
 
-            test_dataloader = self.test_dataloaders[subset]
+            val_dataloader = self.val_dataloaders[subset]
             with torch.no_grad():
                 with autocast(enabled=not self.args.disable_mixed_precision):
-                    for i, input_dict in enumerate(tqdm.tqdm(test_dataloader)):
+                    for i, input_dict in enumerate(tqdm.tqdm(val_dataloader)):
                         inputs = input_dict["inputs"].to(self.rank)
                         composite = input_dict["comp"].to(self.rank)
                         real = input_dict["real"].to(self.rank)
                         mask = input_dict["mask"].to(self.rank)
-                        harmonized = self.model_ddp(composite, mask)[
-                            "harmonized"]
-                        # harmonized_np = np.array(harmonized.detach().cpu(), dtype=np.float32)
-                        # real_np = np.array(real.detach().cpu(), dtype=np.float32) * 255.
+                        harmonized = self.model_ddp(composite, mask)
                         blending = mask * harmonized + (1 - mask) * composite
-                        blending_img = tensor2img(blending, bit=8)
+                        blending_img = 255 * blending
                         harmonized_img = tensor2img(harmonized, bit=8)
-                        real_img = tensor2img(real, bit=8)
-                        psnr_score = calculate_psnr(blending_img, real_img)
+                        real_img = 255 * real
+                        psnr_score = PSNR()(blending_img, real_img, mask)
                         fore_area = torch.sum(mask)
-                        fore_ratio = fore_area / \
-                            (mask.shape[-1] * mask.shape[-2]) * 100
-                        # print(fore_area, mask.max(), mask.shape[-1] * mask.shape[-2])
-                        mse_score = torch.nn.functional.mse_loss(
-                            blending, real)
-                        mse_score_img = torch.nn.functional.mse_loss(
-                            torch.from_numpy(blending_img).float(),
-                            torch.from_numpy(real_img).float(),
-                        )
-                        fmse_score = (
-                            tensor2img(blending * mask -
-                                       real * mask, bit=9) ** 2
-                        ).sum() / fore_area
-                        fpsnr_score = calculate_fpsnr(fmse_score)
+                        fore_ratio = fore_area / (mask.shape[-1] * mask.shape[-2]) * 100
+                        mse_score_img = MSE()(blending_img, real_img, mask)
+                        fmse_score = fMSE()(blending_img, real_img, mask)
+                        fpsnr_score = fPSNR()(blending_img, real_img, mask)
                         if fore_ratio < 5:
                             ratio_count["5"] += 1
                             fmse_scores_ratio["5"] += fmse_score
@@ -329,14 +320,14 @@ class Trainer:
                             mse_scores_ratio["100"] += mse_score_img
 
                         print(
-                            f"psnr: {psnr_score}, mse: {mse_score}, mse_img: {mse_score_img}, fmse: {fmse_score}"
+                            f"psnr: {psnr_score}, mse: {mse_score_img}, mse_img: {mse_score_img}, fmse: {fmse_score}"
                         )
                         print(f"ratio: {fore_ratio}, fmse: {fmse_score}")
                         print(ratio_count, fmse_scores_ratio)
 
                         psnr_scores += psnr_score
                         fpsnr_scores += fpsnr_score
-                        mse_scores += mse_score
+                        mse_scores += mse_score_img
                         mse_scores_img += mse_score_img
                         fmse_scores += fmse_score
 
@@ -353,17 +344,13 @@ class Trainer:
                 fmse_scores_ratio[k] /= ratio_count[k] + 1e-8
             # avg_loss = total_loss / total_count
             self.log(f"Dataset: {subset}, Validation setresults:", level="LOG")
-            self.log(
-                f"Validation set psnr score: {psnr_scores_mu}", level="LOG")
+            self.log(f"Validation set psnr score: {psnr_scores_mu}", level="LOG")
             self.writer.add_scalar(f"{subset} psnr", psnr_scores_mu, step)
-            self.log(
-                f"Validation set fpsnr score: {fpsnr_scores_mu}", level="LOG")
+            self.log(f"Validation set fpsnr score: {fpsnr_scores_mu}", level="LOG")
             self.writer.add_scalar(f"{subset} fpsnr", fpsnr_scores_mu, step)
-            self.log(
-                f"Validation set MSE score: {mse_score_img_mu}", level="LOG")
+            self.log(f"Validation set MSE score: {mse_score_img_mu}", level="LOG")
             self.writer.add_scalar(f"{subset} mse", mse_score_img_mu, step)
-            self.log(
-                f"Validation set fMSE score: {fmse_score_mu}", level="LOG")
+            self.log(f"Validation set fMSE score: {fmse_score_mu}", level="LOG")
             self.writer.add_scalar(f"{subset} fmse", fmse_score_mu, step)
             self.log(
                 f"PSNR: {psnr_scores_mu}, FPSNR: {fpsnr_scores_mu}, mse img: {mse_score_img_mu}",
@@ -371,11 +358,12 @@ class Trainer:
             )
             self.model_ddp.train()
 
+            return {"psnr": psnr_scores_mu, "mse": mse_score_img_mu}
+
     def save(self):
         if self.rank == 0:
             self.model.eval()
-            os.makedirs(
-                f"{self.args.checkpoint_dir}/{self.timestamp}", exist_ok=True)
+            os.makedirs(f"{self.args.checkpoint_dir}/{self.timestamp}", exist_ok=True)
             torch.save(
                 self.model.state_dict(),
                 f"{self.args.checkpoint_dir}/{self.timestamp}/epoch-{self.epoch}.pth",

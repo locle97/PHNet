@@ -8,7 +8,7 @@ import socket
 from contextlib import closing
 
 
-def find_free_port():
+def find_free_port() -> str:
     with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
         s.bind(("", 0))
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -18,13 +18,12 @@ def find_free_port():
 
 if __name__ == "__main__":
     args = OmegaConf.load(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                     f"config/train.yaml")
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), f"config/train.yaml")
     )
 
     os.environ["MASTER_ADDR"] = args.distributed_addr
     os.environ["MASTER_PORT"] = find_free_port()
-    world_size = args.world_size  # torch.cuda.device_count()
+    world_size = args.world_size
     log(f"start train on {world_size} GPU")
     if world_size == 1:
         trainer = Trainer(0, 1, args=args)
