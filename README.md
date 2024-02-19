@@ -22,7 +22,7 @@ pip install -r requirements.txt
 ## Dataset
 We present Flickr-Faces-HQ-Harmonization (FFHQH), a new dataset for portrait harmonization based on the [FFHQ](https://github.com/NVlabs/ffhq-dataset). It contains real images, foreground masks, and synthesized composites. 
 
-- Download link: [FFHQH](https://n-ws-620xz-pd11.s3pd11.sbercloud.ru/b-ws-620xz-pd11-jux/harmonization/synthetic_ffhq.zip)
+- Download link: [FFHQH](https://sc.link/P3MXg)
 
 
 ## Model Zoo
