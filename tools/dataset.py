@@ -76,8 +76,6 @@ class IhdDataset(data.Dataset):
         # define the default transform function. You can use <base_dataset.get_transform>; You can also define your custom transform function
         transform_list = [
             transforms.ToTensor(),
-            # transforms.Normalize((0, 0, 0), (1, 1, 1))
-            # transforms.Lambda(lambda x: x /255.)
         ]
         self.transforms = transforms.Compose(transform_list)
 
@@ -90,9 +88,6 @@ class IhdDataset(data.Dataset):
         Returns:
             a dictionary of data with their names. It usually contains the data itself and its metadata information.
         """
-        # comp = util.retry_load_images(path)
-        # mask = util.retry_load_images(mask_path)
-        # real = util.retry_load_images(target_path)
 
         comp = Image.open(self.image_paths[index]).convert("RGB")
         real = Image.open(self.gt_paths[index]).convert("RGB")
@@ -110,9 +105,6 @@ class IhdDataset(data.Dataset):
         mask = torch.where(mask <= 0.5, 0, 1)
         real = self.transforms(real)
 
-        # comp = real
-        # mask = torch.zeros_like(mask)
-        # inputs=torch.cat([real,mask],0)
         to_flip = random.random() < 0.3
         if self.apply_augs and to_flip:
             real = transforms.functional.hflip(real)
@@ -149,25 +141,18 @@ class FFHQH(data.Dataset):
         super(FFHQH, self).__init__()
         self.opt = opt
         self.image_paths, self.mask_paths, self.gt_paths = [], [], []
-        # self.isTrain = is_train
         self.image_size = opt.crop_size
         self.apply_augs = apply_augs
-        # if self.isTrain == True:
-        #     print('loading training file')
-        #     stage = 'train'
-        # else:
-        #     print('loading test file')
-        #     stage = 'test'
 
         input_list, alpha_list = [], []
 
-        file = os.path.join(self.opt.dataset_root, f"{stage}_split.txt")
+        file = os.path.join(self.opt.ffhqh, f"{stage}_split.txt")
         with open(file, "r") as f:
             for line in f.readlines():
                 line = line.rstrip()
 
-                input_path = os.path.join(self.opt.dataset_root, "comp", line)
-                mask_path = os.path.join(self.opt.dataset_root, "alpha", line)
+                input_path = os.path.join(self.opt.ffhqh, "comp", line)
+                mask_path = os.path.join(self.opt.ffhqh, "alpha", line)
                 gt_path = os.path.join(self.opt.ffhq, line)
 
                 self.image_paths.append(input_path)

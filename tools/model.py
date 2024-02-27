@@ -72,9 +72,11 @@ class UpsampleResize(nn.Sequential):
         mode="bilinear",
     ):
         super().__init__(
-            nn.Upsample(scale_factor=scale_factor, mode=mode)
-            if out_size is None
-            else nn.Upsample(out_size, mode=mode),
+            (
+                nn.Upsample(scale_factor=scale_factor, mode=mode)
+                if out_size is None
+                else nn.Upsample(out_size, mode=mode)
+            ),
             nn.ReflectionPad2d(1),
             nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=0),
             activation() if activation is not None else nn.Identity(),
@@ -204,7 +206,6 @@ class ConvTransposeUp(nn.Sequential):
             nn.ConvTranspose2d(
                 in_channels,
                 out_channels,
-                # output_padding=output_padding, dilation=dilation
                 kernel_size=kernel_size,
                 padding=padding,
                 stride=stride,
@@ -349,7 +350,6 @@ class PHNet(nn.Module):
         enc_outs = [x]
         x_harm = self.feature_extractor(x * mask, x * (1 - mask), mask)
 
-        # x = x_harm
         masks = [mask.float()]
         for i, down_layer in enumerate(self.encoder):
             x = down_layer(x)

@@ -36,7 +36,7 @@ Also, we provide some pre-trained models called PHNet for demo usage.
 | Trained on FFHQH, 256x256    |   `checkpoints/`        | [ffhqh1024.pth](https://n-ws-620xz-pd11.s3pd11.sbercloud.ru/b-ws-620xz-pd11-jux/harmonization/ffhqh256.pth) |
 
 
-## Train [TODO]
+## Train
 You can use downloaded trained models, otherwise select the baseline and parameters for training`.
 To train the model, execute the following command:
 
