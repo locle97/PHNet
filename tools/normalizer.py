@@ -17,12 +17,9 @@ class PatchedHarmonizer(nn.Module):
     def __init__(self, grid_count=1, init_weights=[0.9, 0.1]):
         super(PatchedHarmonizer, self).__init__()
         self.eps = 1e-8
-        # self.weights = torch.nn.Parameter(torch.ones((grid_count, grid_count)), requires_grad=True)
-        # self.grid_weights_ = torch.nn.Parameter(torch.FloatTensor(init_weights), requires_grad=True)
         self.grid_weights = torch.nn.Parameter(
             torch.FloatTensor(init_weights), requires_grad=True
         )
-        # self.weights.retain_graph = True
         self.grid_count = grid_count
 
     def lab_shift(self, x, invert=False):
@@ -82,8 +79,8 @@ class PatchedHarmonizer(nn.Module):
     def forward(self, fg_rgb, bg_rgb, alpha, masked_stats=False):
         bg_rgb = F.interpolate(bg_rgb, size=(fg_rgb.shape[2:]))  # b x C x H x W
 
-        bg_lab = bg_rgb  # self.lab_shift(rgb_to_lab(bg_rgb/255.))
-        fg_lab = fg_rgb  # self.lab_shift(rgb_to_lab(fg_rgb/255.))
+        bg_lab = bg_rgb
+        fg_lab = fg_rgb
 
         if masked_stats:
             self.bg_global_mean, self.bg_global_var = self.get_mean_std(
@@ -122,13 +119,11 @@ class PatchedHarmonizer(nn.Module):
                     ind[1] = None
                 if w == self.grid_count - 1:
                     ind[-1] = None
-                harmonized[
-                    :, :, ind[0] : ind[1], ind[2] : ind[3]
-                ] = self.normalize_channel(
-                    fg[:, :, ind[0] : ind[1], ind[2] : ind[3]], h, w
+                harmonized[:, :, ind[0] : ind[1], ind[2] : ind[3]] = (
+                    self.normalize_channel(
+                        fg[:, :, ind[0] : ind[1], ind[2] : ind[3]], h, w
+                    )
                 )
-
-        # harmonized = self.lab_shift(harmonized, invert=True)
 
         return harmonized
 
@@ -140,13 +135,11 @@ class PatchedHarmonizer(nn.Module):
 
         # global2global normalization
         zeroed_mean = value - fg_global_mean
-        # (fg_v * div_global_v +  (1-fg_v) * div_v)
         scaled_var = zeroed_mean * (bg_global_var / (fg_global_var + self.eps))
         normalized_global = scaled_var + bg_global_mean
 
         # local2local normalization
         zeroed_mean = value - fg_local_mean
-        # (fg_v * div_global_v +  (1-fg_v) * div_v)
         scaled_var = zeroed_mean * (bg_local_var / (fg_local_var + self.eps))
         normalized_local = scaled_var + bg_local_mean
 
@@ -162,7 +155,6 @@ class PatchedHarmonizer(nn.Module):
             .sum()
             .squeeze()
         )
-        # (fg_v * div_global_v +  (1-fg_v) * div_v)
         scaled_var = zeroed_mean * (
             self.bg_global_var / (self.fg_global_var + self.eps)
         )
@@ -222,7 +214,6 @@ class PatchNormalizer(nn.Module):
             .sum()
             .squeeze()
         )
-        # (fg_v * div_global_v +  (1-fg_v) * div_v)
         scaled_var = zeroed_mean * (
             self.bg_global_var / (self.fg_global_var + self.eps)
         )

@@ -55,9 +55,6 @@ class Tester:
         self.rank = rank
         self.world_size = world_size
         self.log("Initializing distributed")
-        # os.environ['MASTER_ADDR'] = self.args.distributed_addr
-        # os.environ['MASTER_PORT'] = self.args.distributed_port
-        # dist.init_process_group("nccl", rank=rank, world_size=world_size)
         if world_size == 1:
             dist.init_process_group(
                 "gloo",
@@ -130,16 +127,10 @@ class Tester:
     def init_writer(self):
         if self.rank == 0:
             self.timestamp = f"{datetime.datetime.now():%d_%B_%H_%M}"
-            # self.logger = logging.getLogger()
-            # self.logger.setLevel(logging.INFO)
-            # fh = logging.FileHandler(f"{self.args.checkpoint_dir}/{self.timestamp}/logs.log")
-            # self.logger.addHandler(fh)
-            print("LOGGER CREATED")
             self.log("Initializing writer")
             self.writer = SummaryWriter(
                 f"{self.args.log_dir}/test_{self.args.experiment_name}_{self.timestamp}"
             )
-            # logging.basicConfig(filename=f"{self.args.checkpoint_dir}/{self.timestamp}/log.txt", level=logging.INFO)
 
     def normalize(self, x):
         return 2 * (x - x.min() / x.max() - x.min()) - 1
@@ -174,17 +165,11 @@ class Tester:
                         composite = input_dict["comp"].to(self.rank)
                         real = input_dict["real"].to(self.rank)
                         mask = input_dict["mask"].to(self.rank)
-                        # print(composite.shape, mask.shape)
                         harmonized = self.model_ddp(composite, mask)
-                        # harmonized = harmonized[
-                        #     "harmonized"]
-                        # harmonized_np = np.array(harmonized.detach().cpu(), dtype=np.float32)
-                        # real_np = np.array(real.detach().cpu(), dtype=np.float32) * 255.
                         blending = mask * harmonized + (1 - mask) * composite
                         blending_img = 255 * blending
                         harmonized_img = tensor2img(harmonized, bit=8)
                         real_img = 255 * real
-                        # psnr_score = calculate_psnr(blending_img, real_img)
                         psnr_score = PSNR()(blending_img, real_img, mask)
                         fore_area = torch.sum(mask)
                         ssim_score = SSIM()(
@@ -193,21 +178,9 @@ class Tester:
                             mask[0][0],
                         )
                         fore_ratio = fore_area / (mask.shape[-1] * mask.shape[-2]) * 100
-                        # print(fore_area, mask.max(), mask.shape[-1] * mask.shape[-2])
-                        # mse_score = torch.nn.functional.mse_loss(
-                        #     blending, real)
                         mse_score_img = MSE()(blending_img, real_img, mask)
-                        # mse_score_img = torch.nn.functional.mse_loss(
-                        #     torch.from_numpy(blending_img).float(),
-                        #     torch.from_numpy(real_img).float(),
-                        # )
-                        # fmse_score = (
-                        #     tensor2img(blending * mask -
-                        #                real * mask, bit=9) ** 2
-                        # ).sum() / fore_area
                         fmse_score = fMSE()(blending_img, real_img, mask)
                         fpsnr_score = fPSNR()(blending_img, real_img, mask)
-                        # fpsnr_score = calculate_fpsnr(fmse_score)
                         if fore_ratio < 5:
                             ratio_count["5"] += 1
                             fmse_scores_ratio["5"] += fmse_score
@@ -222,15 +195,11 @@ class Tester:
                             fmse_scores_ratio["100"] += fmse_score
                             mse_scores_ratio["100"] += mse_score_img
 
-                        print(
+                        self.log(
                             f"psnr: {psnr_score}, mse: {mse_score_img}, mse_img: {mse_score_img}, fmse: {fmse_score}, ssim: {ssim_score}",
                         )
-                        print(f"ratio: {fore_ratio}, fmse: {fmse_score}")
-                        print(ratio_count, fmse_scores_ratio, ssim_score)
-                        # print(blending_img[0].permute(1,2,0), real_img[0].permute(1,2,0), mask[0][0])
-                        # torch.save(blending_img[0].permute(1,2,0),'/home/jovyan/efremyan/harmonization/PHNet/debug/pred.pt')
-                        # torch.save(real_img[0].permute(1,2,0),'/home/jovyan/efremyan/harmonization/PHNet/debug/real.pt')
-                        # torch.save(mask[0][0], '/home/jovyan/efremyan/harmonization/PHNet/debug/mask.pt')
+                        self.log(f"ratio: {fore_ratio}, fmse: {fmse_score}")
+                        self.log(ratio_count, fmse_scores_ratio, ssim_score)
                         ssim_scores += ssim_score
                         psnr_scores += psnr_score
                         fpsnr_scores += fpsnr_score
@@ -250,7 +219,6 @@ class Tester:
             for k in ratio_count.keys():
                 mse_scores_ratio[k] /= ratio_count[k] + 1e-8
                 fmse_scores_ratio[k] /= ratio_count[k] + 1e-8
-            # avg_loss = total_loss / total_count
             self.log(f"Dataset: {subset}, Test set results:", level="LOG")
             self.log(f"Test set psnr score: {psnr_scores_mu}", level="LOG")
             self.log(f"Test set fpsnr score: {fpsnr_scores_mu}", level="LOG")
@@ -270,5 +238,3 @@ class Tester:
     def log(self, msg, level="INFO"):
         if self.rank == 0:
             print(f"[GPU{self.rank}] {msg}")
-        # if self.rank == 0 and level == "LOG":
-        #     self.logger.info(f'[GPU{self.rank}] {msg}')

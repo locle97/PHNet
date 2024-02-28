@@ -320,33 +320,6 @@ class LaplacianLoss(torch.nn.Module):
         )
 
 
-# def matting_loss(pred_fgr, pred_pha, true_fgr, true_pha):
-#     """
-#     Args:
-#         pred_fgr: Shape(B, T, 3, H, W)
-#         pred_pha: Shape(B, T, 1, H, W)
-#         true_fgr: Shape(B, T, 3, H, W)
-#         true_pha: Shape(B, T, 1, H, W)
-#     """
-#     loss = dict()
-#     # Alpha losses
-#     loss['pha_l1'] = F.l1_loss(pred_pha, true_pha)
-#     loss['pha_laplacian'] = laplacian_loss(pred_pha.flatten(0, 1), true_pha.flatten(0, 1))
-#     loss['pha_coherence'] = F.mse_loss(pred_pha[:, 1:] - pred_pha[:, :-1],
-#                                        true_pha[:, 1:] - true_pha[:, :-1]) * 5
-#     # Foreground losses
-#     true_msk = true_pha.gt(0)
-#     pred_fgr = pred_fgr * true_msk
-#     true_fgr = true_fgr * true_msk
-#     loss['fgr_l1'] = F.l1_loss(pred_fgr, true_fgr)
-#     loss['fgr_coherence'] = F.mse_loss(pred_fgr[:, 1:] - pred_fgr[:, :-1],
-#                                        true_fgr[:, 1:] - true_fgr[:, :-1]) * 5
-#     # Total
-#     loss['total'] = loss['pha_l1'] + loss['pha_coherence'] + loss['pha_laplacian'] \
-#                   + loss['fgr_l1'] + loss['fgr_coherence']
-#     return loss
-
-
 def segmentation_loss(pred_seg, true_seg):
     """
     Args:
@@ -443,8 +416,6 @@ def compute_connectivity_loss_whole_image(pd, gt, step=0.1):
     return loss
 
 
-# убираем ось exclude из всех осей, имеющихся у тензора.
-# https://github.com/SamsungLabs/image_harmonization/blob/4d16b1257eaae115c8714bf147f3113a9dabdf51/iharm/utils/misc.py#L6
 def get_dims_with_exclusion(dim, exclude=None):
     dims = list(range(dim))
     if exclude is not None:

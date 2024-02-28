@@ -54,9 +54,6 @@ class Trainer:
         self.rank = rank
         self.world_size = world_size
         self.log("Initializing distributed")
-        # os.environ['MASTER_ADDR'] = self.args.distributed_addr
-        # os.environ['MASTER_PORT'] = self.args.distributed_port
-        # dist.init_process_group("nccl", rank=rank, world_size=world_size)
         if world_size == 1:
             dist.init_process_group(
                 "gloo",
@@ -125,17 +122,13 @@ class Trainer:
             find_unused_parameters=True,
         )
         self.lpips_loss = lpips.LPIPS(net="vgg").to(self.rank)
-        # self.psnr_loss = PSNRLoss(max_val=1).to(self.rank)
         self.psnr_loss = PSNRLossPositive(max_val=1).to(self.rank)
         self.fnmse_loss = FnMSE(min_area=100.0).to(self.rank)
         self.color_loss = L_color().to(self.rank)
         self.gradient_loss = GradientLoss(loss_f=torch.nn.L1Loss()).to(self.rank)
-        # self.optimizer = torch.optim.AdamW(
-        #     self.model_ddp.parameters(), lr=self.args.lr)
         self.optimizer = Lion(self.model_ddp.parameters(), lr=self.args.lr)
         self.scaler = GradScaler()
         self.scheduler = CosineAnnealingLR(self.optimizer, T_max=100)
-        # self.scheduler = ReduceLROnPlateau(optimizer=self.optimizer, mode='min')
 
     def load_checkpoint(self, checkpoint=None):
         if checkpoint is None:
@@ -156,16 +149,11 @@ class Trainer:
                 glob.glob("*.py") + glob.glob("config/*.yaml") + glob.glob("tools/*.py")
             ):
                 shutil.copy(src_file, f"{self.args.checkpoint_dir}/{self.timestamp}/")
-            # self.logger = logging.getLogger()
-            # self.logger.setLevel(logging.INFO)
-            # fh = logging.FileHandler(f"{self.args.checkpoint_dir}/{self.timestamp}/logs.log")
-            # self.logger.addHandler(fh)
-            print("LOGGER CREATED")
+            self.log("LOGGER CREATED")
             self.log("Initializing writer")
             self.writer = SummaryWriter(
                 f"{self.args.log_dir}/{self.args.experiment_name}_{self.timestamp}"
             )
-            # logging.basicConfig(filename=f"{self.args.checkpoint_dir}/{self.timestamp}/log.txt", level=logging.INFO)
 
     def train(self):
         self.log(f"training for {self.args.epochs} epochs", level="LOG")
@@ -181,16 +169,12 @@ class Trainer:
 
             for i, input_dict in tqdm.tqdm(enumerate(self.train_dataloader)):
                 self.train_step(input_dict, total_step + i, epoch)
-                # self.scheduler.step()
 
             if not self.args.disable_validation:
                 for subset in self.val_dataloaders.keys():
                     val_metrics = self.validate(epoch, subset=subset)
                     if self.rank == 0 and val_metrics["psnr"] >= psnr_thrsh:
                         self.save()
-                # if epoch % self.args.save_model_interval == 0:
-
-            # self.scheduler.step()
 
     def train_step(self, input_dict, step, epoch):
         inputs = input_dict["inputs"].to(self.rank)
@@ -207,8 +191,6 @@ class Trainer:
             losses["FnMSE"] = self.fnmse_loss(
                 pred=predicted, target=real, mask=mask
             ).mean()
-            # losses["PSNR"] = self.psnr_loss(input=predicted, target=real)
-            # losses["combined"] = torch.nn.MSELoss()(real * mask, predicted * mask) + torch.nn.L1Loss()(real * revert_mask, predicted * revert_mask)
             losses["Gradient"] = self.gradient_loss(real * mask, predicted * mask)
             if epoch > 100:
                 losses["Color"] = self.color_loss(predicted).sum()
@@ -229,22 +211,13 @@ class Trainer:
                 self.log(f"loss[{key}]={losses[key]}")
                 if self.rank == 0:
                     self.writer.add_scalar(f"loss_{key}", losses[key], step)
-            # if self.rank == 0:
-            # self.writer.add_scalar(f"learning_rate", self.optimizer.param_groups[-1]['lr'], step)
-            # self.writer.add_scalar(f"learning_rate", self.scheduler.get_last_lr(), step)
 
             self.log(f"total loss:{total_loss}", level="LOG")
-
-        # total_loss.backward()
-        # self.optimizer.step()
-        # self.optimizer.zero_grad()
 
         self.scaler.scale(total_loss).backward()
         self.scaler.step(self.optimizer)
         self.scaler.update()
         self.optimizer.zero_grad()
-        # if self.rank == 0 and step > 0 and step % self.args.save_model_interval == 0:
-        #     self.save()
 
         if self.rank == 0 and step % self.args.log_image_interval == 0:
             self.log_image_grid(
@@ -319,11 +292,11 @@ class Trainer:
                             fmse_scores_ratio["100"] += fmse_score
                             mse_scores_ratio["100"] += mse_score_img
 
-                        print(
+                        self.log(
                             f"psnr: {psnr_score}, mse: {mse_score_img}, mse_img: {mse_score_img}, fmse: {fmse_score}"
                         )
-                        print(f"ratio: {fore_ratio}, fmse: {fmse_score}")
-                        print(ratio_count, fmse_scores_ratio)
+                        self.log(f"ratio: {fore_ratio}, fmse: {fmse_score}")
+                        self.log(ratio_count, fmse_scores_ratio)
 
                         psnr_scores += psnr_score
                         fpsnr_scores += fpsnr_score
@@ -342,7 +315,7 @@ class Trainer:
             for k in ratio_count.keys():
                 mse_scores_ratio[k] /= ratio_count[k] + 1e-8
                 fmse_scores_ratio[k] /= ratio_count[k] + 1e-8
-            # avg_loss = total_loss / total_count
+
             self.log(f"Dataset: {subset}, Validation setresults:", level="LOG")
             self.log(f"Validation set psnr score: {psnr_scores_mu}", level="LOG")
             self.writer.add_scalar(f"{subset} psnr", psnr_scores_mu, step)
@@ -376,5 +349,3 @@ class Trainer:
     def log(self, msg, level="INFO"):
         if self.rank == 0:
             print(f"[GPU{self.rank}] {msg}")
-        # if self.rank == 0 and level == "LOG":
-        #     self.logger.info(f'[GPU{self.rank}] {msg}')
