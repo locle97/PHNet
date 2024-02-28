@@ -31,13 +31,13 @@ Also, we provide some pre-trained models called PHNet for demo usage.
 | State file                           | Where to place                                   | Download |
 |-----------------------------------|-------------------------------------------|----|
 | Trained on iHarmony4, 512x512   |   `checkpoints/`        | [iharmony512.pth](https://n-ws-620xz-pd11.s3pd11.sbercloud.ru/b-ws-620xz-pd11-jux/harmonization/iharmony512.pth)|
-| Trained on FFHQH, 1024x1024    |   `checkpoints/`        | [ffhqh1024.pth](https://n-ws-620xz-pd11.s3pd11.sbercloud.ru/b-ws-620xz-pd11-jux/harmonization/ffhqh1024.pth) |
-| Trained on FFHQH, 512x512    |   `checkpoints/`        | [ffhqh1024.pth](https://n-ws-620xz-pd11.s3pd11.sbercloud.ru/b-ws-620xz-pd11-jux/harmonization/ffhqh512.pth) |
-| Trained on FFHQH, 256x256    |   `checkpoints/`        | [ffhqh1024.pth](https://n-ws-620xz-pd11.s3pd11.sbercloud.ru/b-ws-620xz-pd11-jux/harmonization/ffhqh256.pth) |
+| Trained on FFHQH, 1024x1024    |   `checkpoints/`        | [ffhqh1024.pth](https://sc.link/6sIbDh) |
+| Trained on FFHQH, 512x512    |   `checkpoints/`        | [ffhqh512.pth](https://sc.link/aXZcw) |
+| Trained on FFHQH, 256x256    |   `checkpoints/`        | [ffhqh256.pth](https://sc.link/xCxy3) |
 
 
 ## Train
-You can use downloaded trained models, otherwise select the baseline and parameters for training`.
+You can use downloaded trained models, otherwise select the baseline and parameters for training.
 To train the model, execute the following command:
 
 ```bash
@@ -54,12 +54,29 @@ python test.py
 ```
 Refer to our ```config/test.yaml``` for inference details.
 
-## Run demo
-To run the demo app locally, execute the following command:
+## Authors and Credits
+- [Kapitanov Alexander](https://www.linkedin.com/in/hukenovs)
+- [Efremyan Karen](https://www.linkedin.com/in/befozg)
+- [Petrova Elizaveta](https://www.linkedin.com/in/kleinsbotle/)
+- [Kaskov Evgeny](https://linkedin.com/in/darkasevgen)
 
-```bash
-python app.py
-```
+## Citation
+You can cite the paper using the following BibTeX entry:
 
-Refer to our ```config/demo.yaml``` for demo details.
-You can enable link sharing option to create global link in ```app.py```. Then follow to ```http://127.0.0.1:7860``` on your localhost to try out the application.
+    @misc{efremyan2024phnet,
+      title={PHNet: Patch-based Normalization for Portrait Harmonization}, 
+      author={Karen Efremyan and Elizaveta Petrova and Evgeny Kaskov and Alexander Kapitanov},
+      year={2024},
+      eprint={2402.17561},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV}}
+
+
+## Links
+- [arXiv](https://arxiv.org/abs/2402.17561)
+- [Github](https://github.com/ai-forever/PHNet)
+
+## License
+<a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a><br />This work is licensed under a variant of <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
+
+Please see the specific [license](https://github.com/ai-forever/PHNet/blob/main/license/en_us.pdf).
