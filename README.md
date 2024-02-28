@@ -69,8 +69,8 @@ You can cite the paper using the following BibTeX entry:
       year={2024},
       eprint={2402.17561},
       archivePrefix={arXiv},
-      primaryClass={cs.CV}
-}
+      primaryClass={cs.CV}}
+
 
 ## Links
 - [arXiv](https://arxiv.org/abs/2402.17561)
