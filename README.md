@@ -32,8 +32,8 @@ Also, we provide some pre-trained models called PHNet for demo usage.
 |-----------------------------------|-------------------------------------------|----|
 | Trained on iHarmony4, 512x512   |   `checkpoints/`        | [iharmony512.pth](https://n-ws-620xz-pd11.s3pd11.sbercloud.ru/b-ws-620xz-pd11-jux/harmonization/iharmony512.pth)|
 | Trained on FFHQH, 1024x1024    |   `checkpoints/`        | [ffhqh1024.pth](https://sc.link/6sIbDh) |
-| Trained on FFHQH, 512x512    |   `checkpoints/`        | [ffhqh1024.pth](https://sc.link/aXZcw) |
-| Trained on FFHQH, 256x256    |   `checkpoints/`        | [ffhqh1024.pth](https://sc.link/xCxy3) |
+| Trained on FFHQH, 512x512    |   `checkpoints/`        | [ffhqh512.pth](https://sc.link/aXZcw) |
+| Trained on FFHQH, 256x256    |   `checkpoints/`        | [ffhqh256.pth](https://sc.link/xCxy3) |
 
 
 ## Train [TODO]
