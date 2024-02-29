@@ -4,7 +4,7 @@ We present a patch-based harmonization network consisting of novel Patch-based n
 
 ![example](assets/scheme.png)
 
-For more information see our paper [PHNet: Patch-based Normalization for Image Harmonization](https://arxiv.org).
+For more information see our paper [PHNet: Patch-based Normalization for Image Harmonization](https://arxiv.org/abs/2402.17561).
 
 ## Installation
 Clone and install required python packages:
