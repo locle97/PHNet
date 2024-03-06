@@ -1,9 +1,8 @@
 world_size: 4
 experiment_name: 'FFHQH_training'
 datasets:
+    crop_size: 256
     iharmony: "/home/jovyan/datasets/iHarmony4/"
-    crop_size: 1024
-    # dataset_root: "/home/jovyan/datasets/iHarmony4/"
     ffhqh: "/home/jovyan/datasets/ffhqh/"
     dataset_root: "/home/jovyan/datasets/ffhqh/"
     ffhq: "/home/jovyan/datasets/ffhq/images1024x1024/"
@@ -11,9 +10,8 @@ task_for_oneformer: "matting"
 datasets_to_use_test: ["FFHQH"]
 datasets_to_use_val: ["FFHQH"]
 dataset_to_use_train: "FFHQH"
-pretrained_model: 'microsoft/swin-base-patch4-window7-224' #"microsoft/swinv2-tiny-patch4-window8-256"  #"nielsr/mask2former-swin-base-youtubevis-2021" #"nvidia/mit-b2"
-batch_size: 4
-num_workers: 4
+batch_size: 16
+num_workers: 16
 log_dir: "log"
 checkpoint_dir: "checkpoints"
 load_pretrained: False

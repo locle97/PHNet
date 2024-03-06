@@ -332,10 +332,8 @@ def linear_rgb_to_rgb(image: torch.Tensor) -> torch.Tensor:
 # --------------------------------------------Inference tools-------------------------------------------- #
 def inference_img(model, img, device="cpu"):
     h, w, _ = img.shape
-    # print(img.shape)
     if h % 8 != 0 or w % 8 != 0:
         img = cv2.copyMakeBorder(img, 8 - h % 8, 0, 8 - w % 8, 0, cv2.BORDER_REFLECT)
-    # print(img.shape)
 
     tensor_img = torch.from_numpy(img).permute(2, 0, 1).to(device)
     input_t = tensor_img
@@ -347,9 +345,7 @@ def inference_img(model, img, device="cpu"):
     input_t = input_t.unsqueeze(0).float()
     with torch.no_grad():
         out = model(input_t)
-    # print("out",out.shape)
     result = out[0][:, -h:, -w:].cpu().numpy()
-    # print(result.shape)
 
     return result[0]
 
