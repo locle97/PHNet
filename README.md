@@ -4,7 +4,7 @@ We present a patch-based harmonization network consisting of novel Patch-based n
 
 ![example](assets/scheme.png)
 
-For more information see our paper [PHNet: Patch-based Normalization for Image Harmonization](https://arxiv.org).
+For more information see our paper [PHNet: Patch-based Normalization for Image Harmonization](https://arxiv.org/abs/2402.17561).
 
 ## Installation
 Clone and install required python packages:
@@ -75,6 +75,7 @@ You can cite the paper using the following BibTeX entry:
 ## Links
 - [arXiv](https://arxiv.org/abs/2402.17561)
 - [Github](https://github.com/ai-forever/PHNet)
+- [Mirror](https://gitlab.ai.cloud.ru/rndcv/PHNet)
 - [paperswithcode](https://paperswithcode.com/paper/phnet-patch-based-normalization-for-portrait)
 - [habr](https://habr.com/ru/companies/sberdevices/articles/797901/)
 
