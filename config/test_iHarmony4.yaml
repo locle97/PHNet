@@ -1,14 +1,13 @@
 grid_counts: [10, 5, 1]
 enc_sizes: [3, 16, 32, 64, 128, 256, 512]
-init_weights: [0.5, 0.5] # weights of local grided image and global harmonized
+init_weights: [0.5, 0.5]
 init_value: 0.8
 skips: True
 device: 'cpu'
 world_size: 1
 checkpoint:
-  # matting_onnx: "checkpoints/stylematte_720.onnx"
-  harmonizer: "checkpoints/best_iharmony.pth"
-  matting: "checkpoints/stylematte.pth"
+  harmonizer: "checkpoints/best_iharmony.pth" # put the path to the downloaded checkpoint
+  # matting: "checkpoints/stylematte.pth"
 input:
   image_size: 512
   composite_path: /home/jovyan/datasets/iHarmony4/HAdobe5k/composite_images/a3323_1_1.jpg 

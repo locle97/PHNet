@@ -12,11 +12,8 @@ Clone and install required python packages:
 git clone https://github.com/befozg/PHNet.git
 cd PHNet
 # Create virtual env by conda from env.yml file
-conda create -f env.yml
+conda env create -f env.yml
 conda activate phnet
-
-# or install packages using pip
-pip install -r requirements.txt
 ```
 
 ## Dataset
@@ -41,18 +38,18 @@ You can use downloaded trained models, otherwise select the baseline and paramet
 To train the model, execute the following command:
 
 ```bash
-python train.py
+python train.py <train-config-path> 
 ```
-
-Refer to our ```config/train.yaml```  for training details.
+where ```train-config-path``` refers to the appropriate configuration file.
+You should pass your own config path for customized experiments. Refer to our ```config/train.yaml```  for training details.
 
 ## Test
 To test the model, execute the following command:
 
 ```bash
-python test.py
+python test.py <test-config-path>
 ```
-Refer to our ```config/test.yaml``` for inference details.
+where ```test-config-path``` refers to the appropriate configuration file. Refer to our ```config/test_FFHQH.yaml``` for inference details using ```FFHQH``` checkpoints and ```config/test_iHarmony4.yaml``` for ```iHarmony4``` trained model.
 
 ## Authors and Credits
 - [Kapitanov Alexander](https://www.linkedin.com/in/hukenovs)
