@@ -2,11 +2,12 @@ from torch import Tensor
 from tools import Inference
 from omegaconf import OmegaConf
 import os
-import sys
 import PIL
 from matplotlib import pyplot as plt
 import numpy as np
 import torchvision.transforms.functional as tf
+from pathlib import Path
+import sys
 
 
 def predict(comp, mask) -> np.uint8:
@@ -26,21 +27,21 @@ def predict(comp, mask) -> np.uint8:
 
 
 if __name__ == "__main__":
-    args = OmegaConf.load(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), f"config/test.yaml")
-    )
+    config_path = sys.argv[-1]
+    dir_name = os.path.dirname(os.path.abspath(__file__))
+    args = OmegaConf.load(os.path.join(dir_name, config_path))
+    Path(args.output.path).mkdir(parents=True, exist_ok=True)
 
     infer = Inference(**args)
-    path_suff = os.path.split(args.input.composite_path)[-1]
+    path = os.path.split(args.input.composite_path)[-1]
     comp = PIL.Image.open(args.input.composite_path)
     mask = PIL.Image.open(args.input.mask_path)
 
     harmonized: np.uint8 = predict(comp, mask)
+    path_harm: str = os.path.join(args.output.path, f"harm_{path}")
+    path_comp: str = os.path.join(args.output.path, f"comp_{path}")
+    path_mask: str = os.path.join(args.output.path, f"mask_{path[:-3]}.png")
 
-    path_harmonized: str = os.path.join(args.output.path, f"harmonized_{path_suff}")
-    path_composite: str = os.path.join(args.output.path, f"composite_{path_suff}")
-    path_mask: str = os.path.join(args.output.path, f"mask_{path_suff[:-3]}.png")
-
-    plt.imsave(path_harmonized, harmonized)
-    comp.save(path_composite)
+    plt.imsave(path_harm, harmonized)
+    comp.save(path_comp)
     mask.save(path_mask)

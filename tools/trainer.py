@@ -1,30 +1,28 @@
+from contextlib import closing
+import socket
 import time
 import torch
 import os
-from torch import nn
 import torch.nn
-import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.cuda.amp import autocast, GradScaler
 from torch.utils.data import DataLoader
-from torch.optim.lr_scheduler import CosineAnnealingLR, ReduceLROnPlateau
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data.distributed import DistributedSampler
 import torchvision
-import matplotlib.pyplot as plt
 import shutil
-import logging
 from torch.utils.tensorboard import SummaryWriter
 import tqdm
 import datetime
 import glob
 import lpips
-from .model import *
+from .model import PHNet
 from lion_pytorch import Lion
-from .losses import PSNRLoss, PSNRLossPositive, L_color, GradientLoss, FnMSE
+from .losses import PSNRLossPositive, L_color, GradientLoss, FnMSE
 from .metrics import PSNR, fPSNR, MSE, fMSE
-from .util import calculate_psnr, tensor2img, calculate_fpsnr
 from torch import distributed as dist
-from .dataset import *
+from .dataset import IhdDataset, FFHQH, EasyPortraitH  # noqa
+import numpy as np
 
 
 class Trainer:
@@ -75,7 +73,7 @@ class Trainer:
         self.train_dataset = globals()[self.args.dataset_to_use_train](
             opt=self.args.datasets, stage="train", apply_augs=True
         )
-        self.log(f"Initializing dataset {len(self.train_dataset)}", level="LOG")
+        self.log(f"Initializing dataset {len(self.train_dataset)}", level="LOG")  # noqa
 
         self.train_dataloader = DataLoader(
             dataset=self.train_dataset,
@@ -112,7 +110,9 @@ class Trainer:
         ).to(self.rank)
 
         if self.args.load_pretrained:
-            self.log(f"Restoring from checkpoint: {self.args.checkpoint}", level="LOG")
+            self.log(
+                f"Restoring checkpoint: {self.args.checkpoint}", level="LOG"
+            )  # noqa
             self.load_checkpoint(self.args.checkpoint)
 
         self.model_ddp = DDP(
@@ -125,7 +125,9 @@ class Trainer:
         self.psnr_loss = PSNRLossPositive(max_val=1).to(self.rank)
         self.fnmse_loss = FnMSE(min_area=100.0).to(self.rank)
         self.color_loss = L_color().to(self.rank)
-        self.gradient_loss = GradientLoss(loss_f=torch.nn.L1Loss()).to(self.rank)
+        self.gradient_loss = GradientLoss(loss_f=torch.nn.L1Loss()).to(
+            self.rank
+        )  # noqa
         self.optimizer = Lion(self.model_ddp.parameters(), lr=self.args.lr)
         self.scaler = GradScaler()
         self.scheduler = CosineAnnealingLR(self.optimizer, T_max=100)
@@ -137,22 +139,29 @@ class Trainer:
             checkpoint = weights[-1]
 
         self.model.load_state_dict(
-            torch.load(checkpoint, map_location=f"cuda:{self.rank}"), strict=False
+            torch.load(checkpoint, map_location=f"cuda:{self.rank}"),
+            strict=False,  # noqa
         )
 
     def init_writer(self):
         if self.rank == 0:
             self.timestamp = f"{datetime.datetime.now():%d_%B_%H_%M}"
-            os.makedirs(f"{self.args.checkpoint_dir}/{self.timestamp}", exist_ok=True)
+            os.makedirs(
+                f"{self.args.checkpoint_dir}/{self.timestamp}", exist_ok=True
+            )  # noqa
             self.log("CHECKPOINT CREATED")
             for src_file in (
-                glob.glob("*.py") + glob.glob("config/*.yaml") + glob.glob("tools/*.py")
+                glob.glob("*.py")
+                + glob.glob("config/*.yaml")
+                + glob.glob("tools/*.py")  # noqa
             ):
-                shutil.copy(src_file, f"{self.args.checkpoint_dir}/{self.timestamp}/")
+                shutil.copy(
+                    src_file, f"{self.args.checkpoint_dir}/{self.timestamp}/"
+                )  # noqa
             self.log("LOGGER CREATED")
             self.log("Initializing writer")
             self.writer = SummaryWriter(
-                f"{self.args.log_dir}/{self.args.experiment_name}_{self.timestamp}"
+                f"{self.args.log_dir}/{self.args.experiment_name}_{self.timestamp}"  # noqa
             )
 
     def train(self):
@@ -181,8 +190,6 @@ class Trainer:
         composite = input_dict["comp"].to(self.rank)
         real = input_dict["real"].to(self.rank)
         mask = input_dict["mask"].to(self.rank)
-        path = input_dict["img_path"]
-        revert_mask = (1 - mask).to(self.rank)
         with autocast(enabled=not self.args.disable_mixed_precision):
             predicted = self.model_ddp(composite, mask)
             predicted_blend = predicted * mask + composite * (1 - mask)
@@ -191,7 +198,9 @@ class Trainer:
             losses["FnMSE"] = self.fnmse_loss(
                 pred=predicted, target=real, mask=mask
             ).mean()
-            losses["Gradient"] = self.gradient_loss(real * mask, predicted * mask)
+            losses["Gradient"] = self.gradient_loss(
+                real * mask, predicted * mask
+            )  # noqa
             if epoch > 100:
                 losses["Color"] = self.color_loss(predicted).sum()
             losses["LPIPS"] = self.lpips_loss(
@@ -248,7 +257,7 @@ class Trainer:
         if self.rank == 0:
             self.log(f"Validating at the start of epoch: {self.epoch}")
             self.model_ddp.eval()
-            total_loss, total_count = 0, 0
+            total_count = 0
             psnr_scores = 0
             fpsnr_scores = 0
             mse_scores = 0
@@ -270,11 +279,12 @@ class Trainer:
                         harmonized = self.model_ddp(composite, mask)
                         blending = mask * harmonized + (1 - mask) * composite
                         blending_img = 255 * blending
-                        harmonized_img = tensor2img(harmonized, bit=8)
                         real_img = 255 * real
                         psnr_score = PSNR()(blending_img, real_img, mask)
                         fore_area = torch.sum(mask)
-                        fore_ratio = fore_area / (mask.shape[-1] * mask.shape[-2]) * 100
+                        fore_ratio = (
+                            fore_area / (mask.shape[-1] * mask.shape[-2]) * 100
+                        )  # noqa
                         mse_score_img = MSE()(blending_img, real_img, mask)
                         fmse_score = fMSE()(blending_img, real_img, mask)
                         fpsnr_score = fPSNR()(blending_img, real_img, mask)
@@ -293,7 +303,7 @@ class Trainer:
                             mse_scores_ratio["100"] += mse_score_img
 
                         self.log(
-                            f"psnr: {psnr_score}, mse: {mse_score_img}, mse_img: {mse_score_img}, fmse: {fmse_score}"
+                            f"psnr: {psnr_score}, mse: {mse_score_img}, mse_img: {mse_score_img}, fmse: {fmse_score}"  # noqa
                         )
                         self.log(f"ratio: {fore_ratio}, fmse: {fmse_score}")
                         self.log(ratio_count, fmse_scores_ratio)
@@ -308,7 +318,6 @@ class Trainer:
                         total_count += batch_size
             psnr_scores_mu = psnr_scores / total_count
             fpsnr_scores_mu = fpsnr_scores / total_count
-            mse_score_mu = mse_scores / total_count
             fmse_score_mu = fmse_scores / total_count
             mse_score_img_mu = mse_scores_img / total_count
 
@@ -317,16 +326,22 @@ class Trainer:
                 fmse_scores_ratio[k] /= ratio_count[k] + 1e-8
 
             self.log(f"Dataset: {subset}, Validation setresults:", level="LOG")
-            self.log(f"Validation set psnr score: {psnr_scores_mu}", level="LOG")
+            self.log(
+                f"Validation set psnr score: {psnr_scores_mu}", level="LOG"
+            )  # noqa
             self.writer.add_scalar(f"{subset} psnr", psnr_scores_mu, step)
-            self.log(f"Validation set fpsnr score: {fpsnr_scores_mu}", level="LOG")
+            self.log(
+                f"Validation set fpsnr score: {fpsnr_scores_mu}", level="LOG"
+            )  # noqa
             self.writer.add_scalar(f"{subset} fpsnr", fpsnr_scores_mu, step)
-            self.log(f"Validation set MSE score: {mse_score_img_mu}", level="LOG")
+            self.log(
+                f"Validation set MSE score: {mse_score_img_mu}", level="LOG"
+            )  # noqa
             self.writer.add_scalar(f"{subset} mse", mse_score_img_mu, step)
-            self.log(f"Validation set fMSE score: {fmse_score_mu}", level="LOG")
+            self.log(f"Validation set fMSE score: {fmse_score_mu}", level="LOG")  # noqa
             self.writer.add_scalar(f"{subset} fmse", fmse_score_mu, step)
             self.log(
-                f"PSNR: {psnr_scores_mu}, FPSNR: {fpsnr_scores_mu}, mse img: {mse_score_img_mu}",
+                f"PSNR: {psnr_scores_mu}, FPSNR: {fpsnr_scores_mu}, mse img: {mse_score_img_mu}",  # noqa
                 level="LOG",
             )
             self.model_ddp.train()
@@ -336,10 +351,12 @@ class Trainer:
     def save(self):
         if self.rank == 0:
             self.model.eval()
-            os.makedirs(f"{self.args.checkpoint_dir}/{self.timestamp}", exist_ok=True)
+            os.makedirs(
+                f"{self.args.checkpoint_dir}/{self.timestamp}", exist_ok=True
+            )  # noqa
             torch.save(
                 self.model.state_dict(),
-                f"{self.args.checkpoint_dir}/{self.timestamp}/epoch-{self.epoch}.pth",
+                f"{self.args.checkpoint_dir}/{self.timestamp}/epoch-{self.epoch}.pth",  # noqa
             )
             self.log("Model saved", level="LOG")
 

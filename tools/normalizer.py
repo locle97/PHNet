@@ -1,12 +1,6 @@
-import numpy as np
-import cv2
-import os
-import tqdm
-import time
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .util import rgb_to_lab, lab_to_rgb
 
 
 def blend(f, b, a):
@@ -35,7 +29,9 @@ class PatchedHarmonizer(nn.Module):
 
         return x
 
-    def get_mean_std(self, img, mask, dim=[2, 3]) -> tuple[torch.Tensor, torch.Tensor]:
+    def get_mean_std(
+        self, img, mask, dim=[2, 3]
+    ) -> tuple[torch.Tensor, torch.Tensor]:  # noqa
         sum = torch.sum(img * mask, dim=dim)  # (B, C)
         num = torch.sum(mask, dim=dim)  # (B, C)
         mu = sum / (num + self.eps)
@@ -47,7 +43,7 @@ class PatchedHarmonizer(nn.Module):
 
     def compute_patch_statistics(self, lab):
         means, stds = [], []
-        bs, dx, dy = (
+        _, dx, dy = (
             lab.shape[0],
             lab.shape[2] // self.grid_count,
             lab.shape[3] // self.grid_count,
@@ -61,7 +57,7 @@ class PatchedHarmonizer(nn.Module):
                 if w == self.grid_count - 1:
                     ind[-1] = None
                 m, v = self.compute_mean_var(
-                    lab[:, :, ind[0] : ind[1], ind[2] : ind[3]], dim=[2, 3]
+                    lab[:, :, ind[0] : ind[1], ind[2] : ind[3]], dim=[2, 3]  # noqa
                 )
                 cmeans.append(m)
                 cstds.append(v)
@@ -77,7 +73,7 @@ class PatchedHarmonizer(nn.Module):
         return mean, var
 
     def forward(self, fg_rgb, bg_rgb, alpha, masked_stats=False):
-        bg_rgb = F.interpolate(bg_rgb, size=(fg_rgb.shape[2:]))  # b x C x H x W
+        bg_rgb = F.interpolate(bg_rgb, size=(fg_rgb.shape[2:]))  # b x C x H x W # noqa
 
         bg_lab = bg_rgb
         fg_lab = fg_rgb
@@ -119,9 +115,9 @@ class PatchedHarmonizer(nn.Module):
                     ind[1] = None
                 if w == self.grid_count - 1:
                     ind[-1] = None
-                harmonized[:, :, ind[0] : ind[1], ind[2] : ind[3]] = (
+                harmonized[:, :, ind[0] : ind[1], ind[2] : ind[3]] = (  # noqa
                     self.normalize_channel(
-                        fg[:, :, ind[0] : ind[1], ind[2] : ind[3]], h, w
+                        fg[:, :, ind[0] : ind[1], ind[2] : ind[3]], h, w  # noqa
                     )
                 )
 
@@ -151,7 +147,10 @@ class PatchedHarmonizer(nn.Module):
     def normalize_fg(self, value):
         zeroed_mean = (
             value
-            - (self.fg_local_mean * self.grid_weights[None, None, :, :, None, None])
+            - (
+                self.fg_local_mean
+                * self.grid_weights[None, None, :, :, None, None]  # noqa
+            )  # noqa
             .sum()
             .squeeze()
         )
@@ -160,7 +159,10 @@ class PatchedHarmonizer(nn.Module):
         )
         normalized_lg = (
             scaled_var
-            + (self.bg_local_mean * self.grid_weights[None, None, :, :, None, None])
+            + (
+                self.bg_local_mean
+                * self.grid_weights[None, None, :, :, None, None]  # noqa
+            )  # noqa
             .sum()
             .squeeze()
         )
@@ -170,13 +172,20 @@ class PatchedHarmonizer(nn.Module):
 
 class PatchNormalizer(nn.Module):
     def __init__(
-        self, in_channels=3, eps=1e-7, grid_count=1, weights=[0.5, 0.5], init_value=1e-2
+        self,
+        in_channels=3,
+        eps=1e-7,
+        grid_count=1,
+        weights=[0.5, 0.5],
+        init_value=1e-2,  # noqa
     ):
         super(PatchNormalizer, self).__init__()
         self.grid_count = grid_count
         self.eps = eps
 
-        self.weights = nn.Parameter(torch.FloatTensor(weights), requires_grad=True)
+        self.weights = nn.Parameter(
+            torch.FloatTensor(weights), requires_grad=True
+        )  # noqa
         self.fg_var = nn.Parameter(
             init_value * torch.ones(in_channels)[None, :, None, None],
             requires_grad=True,
@@ -210,7 +219,10 @@ class PatchNormalizer(nn.Module):
     def local_normalization(self, value):
         zeroed_mean = (
             value
-            - (self.fg_local_mean * self.grid_weights[None, None, :, :, None, None])
+            - (
+                self.fg_local_mean
+                * self.grid_weights[None, None, :, :, None, None]  # noqa
+            )  # noqa
             .sum()
             .squeeze()
         )
@@ -219,7 +231,10 @@ class PatchNormalizer(nn.Module):
         )
         normalized_lg = (
             scaled_var
-            + (self.bg_local_mean * self.grid_weights[None, None, :, :, None, None])
+            + (
+                self.bg_local_mean
+                * self.grid_weights[None, None, :, :, None, None]  # noqa
+            )  # noqa
             .sum()
             .squeeze()
         )
@@ -238,7 +253,7 @@ class PatchNormalizer(nn.Module):
 
     def compute_patch_statistics(self, img, mask):
         means, stds = [], []
-        bs, dx, dy = (
+        _, dx, dy = (
             img.shape[0],
             img.shape[2] // self.grid_count,
             img.shape[3] // self.grid_count,
@@ -252,8 +267,8 @@ class PatchNormalizer(nn.Module):
                 if w == self.grid_count - 1:
                     ind[-1] = None
                 m, v = self.get_mean_std(
-                    img[:, :, ind[0] : ind[1], ind[2] : ind[3]],
-                    mask[:, :, ind[0] : ind[1], ind[2] : ind[3]],
+                    img[:, :, ind[0] : ind[1], ind[2] : ind[3]],  # noqa
+                    mask[:, :, ind[0] : ind[1], ind[2] : ind[3]],  # noqa
                     dim=[2, 3],
                 )
                 cmeans.append(m.reshape(m.shape[:2]))
@@ -296,7 +311,8 @@ class PatchNormalizer(nn.Module):
         )
 
         fg_result = (
-            self.weights[0] * fg_normalized + self.weights[1] * fg_patch_normalized
+            self.weights[0] * fg_normalized
+            + self.weights[1] * fg_patch_normalized  # noqa
         )
         composite = blend(fg_result, bg_normalized, mask)
 

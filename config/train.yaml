@@ -15,7 +15,7 @@ num_workers: 16
 log_dir: "log"
 checkpoint_dir: "checkpoints"
 load_pretrained: False
-checkpoint: "best.pth"
+checkpoint: "best_ffhqh256.pth"
 distributed_addr: "localhost"
 lr: 1e-5
 epochs: 300

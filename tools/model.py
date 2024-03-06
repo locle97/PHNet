@@ -1,11 +1,9 @@
-from torchvision import transforms, utils
+from torchvision import transforms
 from torch.utils.data import Dataset
 import torch.nn.functional as F
 import torch.nn as nn
 import torch
-import math
 import cv2
-import numpy as np
 from .normalizer import PatchNormalizer, PatchedHarmonizer
 
 
@@ -78,7 +76,9 @@ class UpsampleResize(nn.Sequential):
                 else nn.Upsample(out_size, mode=mode)
             ),
             nn.ReflectionPad2d(1),
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=0),
+            nn.Conv2d(
+                in_channels, out_channels, kernel_size=3, stride=1, padding=0
+            ),  # noqa
             activation() if activation is not None else nn.Identity(),
         )
 
@@ -103,7 +103,7 @@ def init_subpixel(weight):
     co, ci, h, w = weight.shape
     co2 = co // 4
     # initialize sub kernel
-    k = torch.empty([c02, ci, h, w])
+    k = torch.empty([co2, ci, h, w])
     nn.init.kaiming_uniform_(k)
     # repeat 4 times
     k = k.repeat_interleave(4, dim=0)
@@ -158,7 +158,9 @@ class MyAdaptiveMaxPool2d(nn.Module):
 
     def forward(self, x):
         inp_size = x.size()
-        return nn.functional.max_pool2d(input=x, kernel_size=(inp_size[2], inp_size[3]))
+        return nn.functional.max_pool2d(
+            input=x, kernel_size=(inp_size[2], inp_size[3])
+        )  # noqa
 
 
 class SEBlock(nn.Module):
@@ -185,13 +187,13 @@ class SEBlock(nn.Module):
             aux_weitghts = MyAdaptiveMaxPool2d(aux_inp.shape[-1] // 8)(aux_inp)
             aux_weitghts = nn.Sigmoid()(aux_weitghts.mean(1, keepdim=True))
             tmp = x * aux_weitghts
-            tmp_img = (tmp - tmp.min()) / (tmp.max() - tmp.min())
+            # tmp_img = (tmp - tmp.min()) / (tmp.max() - tmp.min()) # noqa
             r += tmp
 
         return r
 
 
-class ConvTransposeUp(nn.Sequential):
+class ConvTransposeUp(nn.Sequential):  # noqa
     def __init__(
         self,
         in_channels,
@@ -230,7 +232,8 @@ class AttentionBlock(nn.Module):
     def __init__(self, in_channels):
         super(AttentionBlock, self).__init__()
         self.attn = nn.Sequential(
-            nn.Conv2d(in_channels * 2, in_channels * 2, kernel_size=1), nn.Sigmoid()
+            nn.Conv2d(in_channels * 2, in_channels * 2, kernel_size=1),
+            nn.Sigmoid(),  # noqa
         )
 
     def forward(self, x):
@@ -242,7 +245,11 @@ class PatchHarmonizerBlock(nn.Module):
         super(PatchHarmonizerBlock, self).__init__()
         self.patch_harmonizer = PatchedHarmonizer(grid_count=grid_count)
         self.head = conv_bn(
-            in_channels * 2, in_channels, kernel_size=3, padding=1, normalization=None
+            in_channels * 2,
+            in_channels,
+            kernel_size=3,
+            padding=1,
+            normalization=None,  # noqa
         )
 
     def forward(self, fg, bg, mask):
@@ -335,7 +342,12 @@ class PHNet(nn.Module):
                     activation=nn.LeakyReLU,
                 ),
                 ConvTransposeUp(
-                    dec_ins[5], 3, norm=None, kernel_size=4, stride=2, activation=None
+                    dec_ins[5],
+                    3,
+                    norm=None,
+                    kernel_size=4,
+                    stride=2,
+                    activation=None,  # noqa
                 ),
             ]
         )
@@ -360,7 +372,9 @@ class PHNet(nn.Module):
         x = self.SE_block(x, aux_inp=x_harm)
 
         masks = masks[::-1]
-        for i, (up_layer, enc_out) in enumerate(zip(self.decoder, enc_outs[::-1])):
+        for i, (up_layer, enc_out) in enumerate(
+            zip(self.decoder, enc_outs[::-1])
+        ):  # noqa
             if i >= self.start_level:
                 enc_out = self.normalizers[i - self.start_level](
                     enc_out, enc_out, masks[i]
@@ -374,7 +388,7 @@ class PHNet(nn.Module):
         return harmonized
 
     def set_requires_grad(
-        self, modules=["encoder", "sh_head", "resquare", "decoder"], value=False
+        self, modules=["encoder", "sh_head", "resquare", "decoder"], value=False  # noqa
     ):
         for module in modules:
             attr = getattr(self, module, None)

@@ -11,26 +11,16 @@ import glob
 import random
 
 
-def make_dataset(dir, max_dataset_size=float("inf")):
-    images = []
-    assert os.path.isdir(dir), "%s is not a valid directory" % dir
-
-    for root, _, fnames in sorted(os.walk(dir)):
-        for fname in fnames:
-            if is_image_file(fname):
-                path = os.path.join(root, fname)
-                images.append(path)
-    return images[: min(max_dataset_size, len(images))]
-
-
 class IhdDataset(data.Dataset):
     """A template dataset class for you to implement custom datasets."""
 
-    def __init__(self, opt, stage="train", apply_augs=False, subset="IhdDataset"):
+    def __init__(
+        self, opt, stage="train", apply_augs=False, subset="IhdDataset"
+    ):  # noqa
         """Initialize this dataset class.
 
         Parameters:
-            opt (Option class) -- stores all the experiment flags; needs to be a subclass of BaseOptions
+            opt (Option class) -- stores all the experiment flags;
 
         A few things can be done here.
         - save the options (have been done in BaseDataset)
@@ -55,7 +45,9 @@ class IhdDataset(data.Dataset):
             self.datasets = [subset]
 
         dataset_root = self.opt.iharmony
-        self.paths = [os.path.join(dataset_root, dataset) for dataset in self.datasets]
+        self.paths = [
+            os.path.join(dataset_root, dataset) for dataset in self.datasets
+        ]  # noqa
 
         for dataset, path in zip(self.datasets, self.paths):
             file = os.path.join(path, f"{dataset}_{stage}.txt")
@@ -64,16 +56,23 @@ class IhdDataset(data.Dataset):
                     line = "composite_images/" + line.rstrip()
                     name_parts = line.split("_")
                     mask_path = line.replace("composite_images", "masks")
-                    mask_path = mask_path.replace(("_" + name_parts[-1]), ".png")
+                    mask_path = mask_path.replace(
+                        ("_" + name_parts[-1]), ".png"
+                    )  # noqa
                     gt_path = line.replace("composite_images", "real_images")
                     gt_path = gt_path.replace(
                         "_" + name_parts[-2] + "_" + name_parts[-1], ".jpg"
                     )
-                    self.image_paths.append(os.path.join(dataset_root, path, line))
-                    self.mask_paths.append(os.path.join(dataset_root, path, mask_path))
-                    self.gt_paths.append(os.path.join(dataset_root, path, gt_path))
+                    self.image_paths.append(
+                        os.path.join(dataset_root, path, line)
+                    )  # noqa
+                    self.mask_paths.append(
+                        os.path.join(dataset_root, path, mask_path)
+                    )  # noqa
+                    self.gt_paths.append(
+                        os.path.join(dataset_root, path, gt_path)
+                    )  # noqa
 
-        # define the default transform function. You can use <base_dataset.get_transform>; You can also define your custom transform function
         transform_list = [
             transforms.ToTensor(),
         ]
@@ -86,7 +85,7 @@ class IhdDataset(data.Dataset):
             index -- a random integer for data indexing
 
         Returns:
-            a dictionary of data with their names. It usually contains the data itself and its metadata information.
+            a dictionary of data with their names.
         """
 
         comp = Image.open(self.image_paths[index]).convert("RGB")
@@ -130,7 +129,7 @@ class FFHQH(data.Dataset):
         """Initialize this dataset class.
 
         Parameters:
-            opt (Option class) -- stores all the experiment flags; needs to be a subclass of BaseOptions
+            opt (Option class) -- stores all the experiment flags;
             stage -- stores train/test/val value for split
         A few things can be done here.
         - save the options (have been done in BaseDataset)
@@ -143,8 +142,6 @@ class FFHQH(data.Dataset):
         self.image_paths, self.mask_paths, self.gt_paths = [], [], []
         self.image_size = opt.crop_size
         self.apply_augs = apply_augs
-
-        input_list, alpha_list = [], []
 
         file = os.path.join(self.opt.ffhqh, f"{stage}_split.txt")
         with open(file, "r") as f:
@@ -170,7 +167,7 @@ class FFHQH(data.Dataset):
             index -- a random integer for data indexing
 
         Returns:
-            a dictionary of data with their names. It usually contains the data itself and its metadata information.
+            a dictionary of data with their names.
         """
         comp = Image.open(self.image_paths[index]).convert("RGB")
         real = Image.open(self.gt_paths[index]).convert("RGB")
@@ -211,7 +208,7 @@ class EasyPortraitH(data.Dataset):
         """Initialize this dataset class.
 
         Parameters:
-            opt (Option class) -- stores all the experiment flags; needs to be a subclass of BaseOptions
+            opt (Option class) -- stores all the experiment flags;
 
         A few things can be done here.
         - save the options (have been done in BaseDataset)
@@ -229,23 +226,33 @@ class EasyPortraitH(data.Dataset):
             stage = "test"
         self.save_ratio = opt.save_ratio
         self.image_paths = list(
-            sorted(glob.glob(os.path.join(self.opt.dataset_root, "images", stage, "*")))
+            sorted(
+                glob.glob(
+                    os.path.join(self.opt.dataset_root, "images", stage, "*")
+                )  # noqa
+            )
         )
         self.mask_paths = list(
             sorted(
                 glob.glob(
-                    os.path.join(self.opt.dataset_root, "annotations", stage, "*")
+                    os.path.join(
+                        self.opt.dataset_root, "annotations", stage, "*"
+                    )  # noqa
                 )
             )
         )
         self.gt_paths = list(
-            sorted(glob.glob(os.path.join(self.opt.dataset_root, "real", stage, "*")))
+            sorted(
+                glob.glob(
+                    os.path.join(self.opt.dataset_root, "real", stage, "*")
+                )  # noqa
+            )
         )
 
     def _resize_with_pad(self, img, pad_val=0):
-        """Return a padded image with 0 values. Image is resized in according to its max
-        dimension size, the short dimension is resized with aspect ration and padded to
-        square image
+        """Return a padded image with 0 values. Image is resized in according
+        to its max dimension size, the short dimension is resized with aspect
+        ration and padded to square image
 
         Parameters:
             img -- cv2.imread result, array with 3 channels.
@@ -293,11 +300,15 @@ class EasyPortraitH(data.Dataset):
             index -- a random integer for data indexing
 
         Returns:
-            a dictionary of data with their names. It usually contains the data itself and its metadata information.
+            a dictionary of data with their names.
         """
         if self.save_ratio:
-            comp = cv2.cvtColor(cv2.imread(self.image_paths[index]), cv2.COLOR_BGR2RGB)
-            real = cv2.cvtColor(cv2.imread(self.gt_paths[index]), cv2.COLOR_BGR2RGB)
+            comp = cv2.cvtColor(
+                cv2.imread(self.image_paths[index]), cv2.COLOR_BGR2RGB
+            )  # noqa
+            real = cv2.cvtColor(
+                cv2.imread(self.gt_paths[index]), cv2.COLOR_BGR2RGB
+            )  # noqa
             mask = cv2.imread(self.mask_paths[index], cv2.COLOR_BGR2GRAY)
             mean = cv2.mean(cv2.bitwise_and(comp, comp, mask=255 - mask))
             comp = self._resize_with_pad(comp, pad_val=mean)

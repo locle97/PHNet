@@ -1,16 +1,14 @@
 import math
 import numpy as np
-from typing import Tuple
 import torch
-import torch.nn as nn
 from torchvision.utils import make_grid
 import cv2
-from torchvision import transforms, models
+from torchvision import transforms
 from PIL import Image
 import torchvision.transforms.functional as tf
 
 
-# --------------------------------------------Metric tools-------------------------------------------- #
+# ---------------------------Metric tools-------------------------------- #
 def lab_shift(x, invert=False):
     x = x.float()
     if invert:
@@ -48,11 +46,13 @@ def tensor2img(tensor, out_type=np.uint8, min_max=(0, 1), bit=8):
     """
     norm = float(2**bit) - 1
     tensor = tensor.squeeze().float().cpu().clamp_(*min_max)  # clamp
-    tensor = (tensor - min_max[0]) / (min_max[1] - min_max[0])  # to range [0,1]
+    tensor = (tensor - min_max[0]) / (min_max[1] - min_max[0])  # range [0,1]
     n_dim = tensor.dim()
     if n_dim == 4:
         n_img = len(tensor)
-        img_np = make_grid(tensor, nrow=int(math.sqrt(n_img)), normalize=False).numpy()
+        img_np = make_grid(
+            tensor, nrow=int(math.sqrt(n_img)), normalize=False
+        ).numpy()  # noqa
         img_np = np.transpose(img_np[[2, 1, 0], :, :], (1, 2, 0))  # HWC, BGR
     elif n_dim == 3:
         img_np = tensor.numpy()
@@ -61,7 +61,8 @@ def tensor2img(tensor, out_type=np.uint8, min_max=(0, 1), bit=8):
         img_np = tensor.numpy()
     else:
         raise TypeError(
-            "Only support 4D, 3D and 2D tensor. But received with dimension: {:d}".format(
+            "Only support 4D, 3D, 2D tensor. \
+            Received dimension is: {:d}".format(
                 n_dim
             )
         )
@@ -80,11 +81,12 @@ def rgb_to_lab(image: torch.Tensor) -> torch.Tensor:
     color is computed using the D65 illuminant and Observer 2.
 
     Args:
-        image: RGB Image to be converted to Lab with shape :math:`(*, 3, H, W)`.
+        image: RGB Image to be converted to Lab with shape `(*, 3, H, W)`.
 
     Returns:
         Lab version of the image with shape :math:`(*, 3, H, W)`.
-        The L channel values are in the range 0..100. a and b are in the range -128..127.
+        The L channel values are in the range 0..100.
+        a and b are in the range -128..127.
 
     Example:
         >>> input = torch.rand(2, 3, 4, 5)
@@ -134,8 +136,8 @@ def lab_to_rgb(image: torch.Tensor, clip: bool = True) -> torch.Tensor:
     a and b channels are in the range of :math:`[-128, 127]`.
 
     Args:
-        image: Lab image to be converted to RGB with shape :math:`(*, 3, H, W)`.
-        clip: Whether to apply clipping to insure output RGB values in range :math:`[0, 1]`.
+        image: Lab image, with shape :math:`(*, 3, H, W)`.
+        clip: Whether to clip the output RGB values in :math:`[0, 1]`.
 
     Returns:
         Lab version of the image with shape :math:`(*, 3, H, W)`.
@@ -180,7 +182,7 @@ def lab_to_rgb(image: torch.Tensor, clip: bool = True) -> torch.Tensor:
     rgbs_im: torch.Tensor = xyz_to_rgb(xyz_im)
 
     # https://github.com/richzhang/colorization-pytorch/blob/66a1cb2e5258f7c8f374f582acc8b1ef99c13c27/util/util.py#L107
-    #     rgbs_im = torch.where(rgbs_im < 0, torch.zeros_like(rgbs_im), rgbs_im)
+    # rgbs_im = torch.where(rgbs_im < 0, torch.zeros_like(rgbs_im), rgbs_im)
 
     # Convert from RGB Linear to sRGB
     rgb_im = linear_rgb_to_rgb(rgbs_im)
@@ -198,7 +200,7 @@ def rgb_to_xyz(image: torch.Tensor) -> torch.Tensor:
     .. image:: _static/img/rgb_to_xyz.png
 
     Args:
-        image: RGB Image to be converted to XYZ with shape :math:`(*, 3, H, W)`.
+        image: RGB Image with shape :math:`(*, 3, H, W)`.
 
     Returns:
          XYZ version of the image with shape :math:`(*, 3, H, W)`.
@@ -232,7 +234,7 @@ def xyz_to_rgb(image: torch.Tensor) -> torch.Tensor:
     r"""Convert a XYZ image to RGB.
 
     Args:
-        image: XYZ Image to be converted to RGB with shape :math:`(*, 3, H, W)`.
+        image: XYZ Image with shape :math:`(*, 3, H, W)`.
 
     Returns:
         RGB version of the image with shape :math:`(*, 3, H, W)`.
@@ -254,13 +256,19 @@ def xyz_to_rgb(image: torch.Tensor) -> torch.Tensor:
     z: torch.Tensor = image[..., 2, :, :]
 
     r: torch.Tensor = (
-        3.2404813432005266 * x + -1.5371515162713185 * y + -0.4985363261688878 * z
+        3.2404813432005266 * x
+        + -1.5371515162713185 * y
+        + -0.4985363261688878 * z  # noqa
     )
     g: torch.Tensor = (
-        -0.9692549499965682 * x + 1.8759900014898907 * y + 0.0415559265582928 * z
+        -0.9692549499965682 * x
+        + 1.8759900014898907 * y
+        + 0.0415559265582928 * z  # noqa
     )
     b: torch.Tensor = (
-        0.0556466391351772 * x + -0.2040413383665112 * y + 1.0573110696453443 * z
+        0.0556466391351772 * x
+        + -0.2040413383665112 * y
+        + 1.0573110696453443 * z  # noqa
     )
 
     out: torch.Tensor = torch.stack([r, g, b], dim=-3)
@@ -274,7 +282,7 @@ def rgb_to_linear_rgb(image: torch.Tensor) -> torch.Tensor:
     .. image:: _static/img/rgb_to_linear_rgb.png
 
     Args:
-        image: sRGB Image to be converted to linear RGB of shape :math:`(*,3,H,W)`.
+        image: sRGB Image of shape :math:`(*,3,H,W)`.
 
     Returns:
         linear RGB version of the image with shape of :math:`(*,3,H,W)`.
@@ -292,7 +300,9 @@ def rgb_to_linear_rgb(image: torch.Tensor) -> torch.Tensor:
         )
 
     lin_rgb: torch.Tensor = torch.where(
-        image > 0.04045, torch.pow(((image + 0.055) / 1.055), 2.4), image / 12.92
+        image > 0.04045,
+        torch.pow(((image + 0.055) / 1.055), 2.4),
+        image / 12.92,  # noqa
     )
 
     return lin_rgb
@@ -302,7 +312,7 @@ def linear_rgb_to_rgb(image: torch.Tensor) -> torch.Tensor:
     r"""Convert a linear RGB image to sRGB. Used in colorspace conversions.
 
     Args:
-        image: linear RGB Image to be converted to sRGB of shape :math:`(*,3,H,W)`.
+        image: linear RGB Image to be converted to sRGB of shape :math:`(*,3,H,W)`.# noqa
 
     Returns:
         sRGB version of the image with shape of shape :math:`(*,3,H,W)`.
@@ -329,11 +339,13 @@ def linear_rgb_to_rgb(image: torch.Tensor) -> torch.Tensor:
     return rgb
 
 
-# --------------------------------------------Inference tools-------------------------------------------- #
+# --------------------------Inference tools--------------------------- #
 def inference_img(model, img, device="cpu"):
     h, w, _ = img.shape
     if h % 8 != 0 or w % 8 != 0:
-        img = cv2.copyMakeBorder(img, 8 - h % 8, 0, 8 - w % 8, 0, cv2.BORDER_REFLECT)
+        img = cv2.copyMakeBorder(
+            img, 8 - h % 8, 0, 8 - w % 8, 0, cv2.BORDER_REFLECT
+        )  # noqa
 
     tensor_img = torch.from_numpy(img).permute(2, 0, 1).to(device)
     input_t = tensor_img
@@ -384,11 +396,13 @@ def extract_matte(img, back, model):
     mask, fg = model.extract(img)
     fg_pil = Image.fromarray(np.uint8(fg))
 
-    composite = fg + (1 - mask[:, :, None]) * np.array(back.resize(mask.shape[::-1]))
+    composite = fg + (1 - mask[:, :, None]) * np.array(
+        back.resize(mask.shape[::-1])
+    )  # noqa
     composite_pil = Image.fromarray(np.uint8(composite))
 
     return [composite_pil, mask, fg_pil]
 
 
 def css(height=3, scale=2):
-    return f".output_image {{height: {height}rem !important; width: {scale}rem !important;}}"
+    return f".output_image {{height: {height}rem !important; width: {scale}rem !important;}}"  # noqa

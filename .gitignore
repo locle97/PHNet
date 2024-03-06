@@ -169,3 +169,6 @@ live_*.py
 converter.py
 app.py
 */stylematte.py
+*/engine.py
+outputs
+log

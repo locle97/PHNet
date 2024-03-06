@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 import random
-from pytorch_msssim import SSIM as ssim  # у меня значение SSIM не совпало с kornia
+from pytorch_msssim import SSIM as ssim
 
 
 class MSE(object):
@@ -17,10 +17,12 @@ class MSE(object):
         """Подсчет MSE.
 
         Args:
-            pred (torch.tensor): Прогноз модели. Shape - (h, w, 3). Тип - float32. Range - (0; 255).
-                                 Если тип не соответствует float32, то pred к нему приводится.
-            target (torch.tensor): GT. Shape - (h, w, 3). Тип - float32. Range - (0; 255).
-                                   Если тип не соответствует float32, то target к нему приводится.
+            pred (torch.tensor): Прогноз модели. Shape - (h, w, 3).
+                    Тип - float32. Range - (0; 255).
+                    Если тип не соответствует float32, то к нему приводится.
+            target (torch.tensor): GT. Shape - (h, w, 3). Тип - float32.
+                    Range - (0; 255).
+                    Если тип не соответствует float32, то к нему приводится.
             mask (torch.tensor): Маска fg области. В MSE не используется.
 
         Returns:
@@ -38,14 +40,15 @@ class MSE(object):
 class fMSE(object):
     """
     Метрика, используемая для подсчета MSE в fg области.
-    Reference: https://github.com/SamsungLabs/image_harmonization/blob/4d16b1257eaae115c8714bf147f3113a9dabdf51/iharm/inference/metrics.py#L83C7-L83C7.
+    Reference: https://github.com/SamsungLabs/image_harmonization.
     """
 
     def __init__(self, eps: float = 1e-6):
         """Инициализация объекта. Кумулятивных полей нет.
 
         Args:
-            eps (float): Для числовой стабильности в знаменатель. По умолчанию 1e-6.
+            eps (float): Для числовой стабильности в знаменатель.
+            По умолчанию 1e-6.
         """
         self.eps = eps
 
@@ -55,25 +58,31 @@ class fMSE(object):
         """Подсчет fMSE.
 
         Args:
-            pred (torch.tensor): Прогноз модели. Shape - (h, w, 3). Тип - float32. Range - (0; 255).
-                                 Если тип не совпадает - pred приводится во float32.
-            target (torch.tensor): GT. Shape - (h, w, 3). Тип - float32. Range - (0; 255).
-                                   Если тип не совпадает - target приводится во float32.
-            mask (torch.tensor): Маска fg области. Должна быть в формате int32 и состоять только из нулей и единиц.
-                                 Содержание проверяется, иначе - exception.
-                                 Если тип не совпадает - маска приводится к int32 принудительно.
-                                 Shape - (h, w). Тип - int32. Unique values - [0, 1].
+            pred (torch.tensor): Прогноз модели. Shape - (h, w, 3).
+                                Тип - float32. Range - (0; 255).
+                                Если тип не совпадает - приводится во float32.
+            target (torch.tensor): GT. Shape - (h, w, 3). Тип - float32.
+                                Range - (0; 255).
+                                Если тип не совпадает - приводится во float32.
+            mask (torch.tensor): Маска fg области. Должна быть в формате int32
+                                и состоять только из нулей и единиц.
+                                Тип - int32. Unique values - [0, 1].
+                                Содержание проверяется, иначе - exception.
+                                Если тип не совпадает - приводится к int32.
+                                Shape - (h, w).
 
         Returns:
             fMSE (float): Значение метрики fMSE.
         """
 
-        combined = torch.cat((mask.unique(), torch.tensor([0, 1]).to(mask.device)))
+        combined = torch.cat(
+            (mask.unique(), torch.tensor([0, 1]).to(mask.device))
+        )  # noqa
         uniques, counts = combined.unique(return_counts=True)
         # difference = uniques[counts == 1]
         if len(uniques) > 2:
             raise ValueError(
-                "Test/val mask is non-binary. Give mask from dataset via nearest interpolation applied on rounded mask."
+                "Test/val mask is non-binary. Give mask from dataset via nearest interpolation applied on rounded mask."  # noqa
             )
 
         if mask.dtype != torch.int32:
@@ -94,14 +103,15 @@ class fMSE(object):
 class PSNR(MSE):
     """
     PSNR.
-    Reference: https://github.com/SamsungLabs/image_harmonization/blob/4d16b1257eaae115c8714bf147f3113a9dabdf51/iharm/inference/metrics.py#L89C17-L89C17.
+    Reference: https://github.com/SamsungLabs/image_harmonization".
     """
 
     def __init__(self, eps: float = 1e-6):
         """Инициализация объекта. Кумулятивных полей нет.
 
         Args:
-            eps (float): Для числовой стабильности в знаменатель. По умолчанию 1e-6.
+            eps (float): Для числовой стабильности в знаменатель.
+                         По умолчанию 1e-6.
         """
         super().__init__()
         self.eps = eps
@@ -112,10 +122,12 @@ class PSNR(MSE):
         """Подсчет PSNR.
 
         Args:
-            pred (torch.tensor): Прогноз модели. Shape - (h, w, 3). Тип - float32. Range - (0; 255).
-                                 Если тип не совпадает - pred приводится во float32 (в MSE).
-            target (torch.tensor): GT. Shape - (h, w, 3). Тип - float32. Range - (0; 255).
-                                   Если тип не совпадает - target приводится во float32 (в MSE).
+            pred (torch.tensor): Прогноз модели. Shape - (h, w, 3).
+                                Тип - float32. Range - (0; 255).
+                                Если тип не совпадает - приводится во float32.
+            target (torch.tensor): GT. Shape - (h, w, 3).
+                                Тип - float32. Range - (0; 255).
+                                Если тип не совпадает - приводится во float32.
             mask (torch.tensor): Маска fg области. В PSNR не используется.
 
         Returns:
@@ -136,7 +148,8 @@ class fPSNR(fMSE):
         """Инициализация объекта. fPSNR вычисляет fMSE.
 
         Args:
-            eps (float): Для числовой стабильности в знаменатель. По умолчанию 1e-6.
+            eps (float): Для числовой стабильности в знаменатель.
+                        По умолчанию 1e-6.
         """
         super().__init__(eps=eps)
         self.eps = eps
@@ -147,14 +160,17 @@ class fPSNR(fMSE):
         """Подсчет fPSNR.
 
         Args:
-            pred (torch.tensor): Прогноз модели. Shape - (h, w, 3). Тип - float32. Range - (0; 255).
-                                 Если тип не совпадает - pred приводится во float32 (в fMSE).
-            target (torch.tensor): GT. Shape - (h, w, 3). Тип - float32. Range - (0; 255).
-                                   Если тип не совпадает - target приводится во float32 (в fMSE).
-            mask (torch.tensor): Маска fg области. Должна быть в формате int32 и состоять только из нулей и единиц.
-                                 Внутри fMSE cодержание проверяется, иначе - exception.
-                                 Если тип не совпадает - маска приводится к int32 принудительно.
-                                 Shape - (h, w). Тип - int32. Unique values - [0, 1].
+            pred (torch.tensor): Прогноз модели. Shape - (h, w, 3).
+                                Тип - float32. Range - (0; 255).
+                                Если тип не совпадает - приводится во float32.
+            target (torch.tensor): GT. Shape - (h, w, 3).
+                                Тип - float32. Range - (0; 255).
+                                Если тип не совпадает - приводится во float32.
+            mask (torch.tensor): Маска fg области. Должна быть в формате int32
+                                и состоять только из нулей и единиц.
+                                Если тип не совпадает - приводится к int32.
+                                Shape - (h, w). Тип - int32.
+                                Unique values - [0, 1].
 
         Returns:
             fPSNR (float): Значение fPSNR метрики.
@@ -180,10 +196,12 @@ class SSIM(object):
         """Подсчет SSIM.
 
         Args:
-            pred (torch.tensor): Прогноз модели. Shape - (h, w, 3). Тип - float32. Range - (0; 255).
-                                 Если тип не совпадает - pred приводится во float32.
-            target (torch.tensor): GT. Shape - (h, w, 3). Тип - float32. Range - (0; 255).
-                                   Если тип не совпадает - pred приводится во float32.
+            pred (torch.tensor): Прогноз модели. Shape - (h, w, 3).
+                                Тип - float32. Range - (0; 255).
+                                Если тип не совпадает - приводится во float32.
+            target (torch.tensor): GT. Shape - (h, w, 3). Тип - float32.
+                                Range - (0; 255).
+                                Если тип не совпадает - приводится во float32.
             mask (torch.tensor): Маска fg области. В SSIM не используется.
 
         Returns:
@@ -197,7 +215,8 @@ class SSIM(object):
 
         # (h, w, 3) -> (3, h, w) -> (1, 3, h, w)
         return self.ssim(
-            pred.permute(2, 0, 1).unsqueeze(0), target.permute(2, 0, 1).unsqueeze(0)
+            pred.permute(2, 0, 1).unsqueeze(0),
+            target.permute(2, 0, 1).unsqueeze(0),  # noqa
         ).item()
 
 
@@ -225,6 +244,8 @@ if __name__ == "__main__":
 
     for metric in [MSE(), fMSE(), PSNR(), fPSNR(), SSIM()]:
         metricv = metric(
-            pred=pred.to("cuda:0"), target=gt.to("cuda:0"), mask=mask.to("cuda:0")
+            pred=pred.to("cuda:0"),
+            target=gt.to("cuda:0"),
+            mask=mask.to("cuda:0"),  # noqa
         )
         print(f"{metric.__class__.__name__}: {metricv}")

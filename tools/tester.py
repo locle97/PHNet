@@ -1,31 +1,23 @@
+from contextlib import closing
+import socket
 import time
 import torch
 import os
-from torch import nn
 import torch.nn
-import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
-from torch.cuda.amp import autocast, GradScaler
+from torch.cuda.amp import autocast
 from torch.utils.data import DataLoader
-from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data.distributed import DistributedSampler
 import torchvision
-import matplotlib.pyplot as plt
-import shutil
-import logging
 from torch.utils.tensorboard import SummaryWriter
 import tqdm
 import datetime
 import glob
-import lpips
-from .model import *
-from lion_pytorch import Lion
-from .losses import *
-from .util import calculate_psnr, tensor2img, calculate_fpsnr
-from torch import distributed as dist
+from .model import PHNet
 from .metrics import PSNR, fPSNR, MSE, fMSE, SSIM
 from torch import distributed as dist
-from .dataset import *
+from .dataset import IhdDataset, FFHQH, EasyPortraitH  # noqa
+import numpy as np
 
 
 class Tester:
@@ -73,7 +65,6 @@ class Tester:
             return str(s.getsockname()[1])
 
     def init_datasets(self):
-        psis = [-0.5, -0.4, -0.3, -0.2, -0.1, 0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
 
         self.test_dataloaders = dict()
         for subset in self.args.datasets_to_use_test:
@@ -104,7 +95,10 @@ class Tester:
             init_value=self.args.model.init_value,
         ).to(self.rank)
 
-        self.log(f"Restoring from checkpoint: {self.args.checkpoint_dir}", level="LOG")
+        self.log(
+            f"Restoring from checkpoint: {self.args.checkpoint_dir}",
+            level="LOG",  # noqa
+        )
         self.load_checkpoint(self.args.checkpoint_dir)
 
         self.model_ddp = DDP(
@@ -121,7 +115,8 @@ class Tester:
             checkpoint = weights[-1]
 
         self.model.load_state_dict(
-            torch.load(checkpoint, map_location=f"cuda:{self.rank}"), strict=False
+            torch.load(checkpoint, map_location=f"cuda:{self.rank}"),
+            strict=False,  # noqa
         )
 
     def init_writer(self):
@@ -129,7 +124,7 @@ class Tester:
             self.timestamp = f"{datetime.datetime.now():%d_%B_%H_%M}"
             self.log("Initializing writer")
             self.writer = SummaryWriter(
-                f"{self.args.log_dir}/test_{self.args.experiment_name}_{self.timestamp}"
+                f"{self.args.log_dir}/test_{self.args.experiment_name}_{self.timestamp}"  # noqa
             )
 
     def normalize(self, x):
@@ -145,7 +140,7 @@ class Tester:
     def test(self, subset="FFHQH"):
         if self.rank == 0:
             self.model_ddp.eval()
-            total_loss, total_count = 0, 0
+            total_count = 0
             psnr_scores = 0
             fpsnr_scores = 0
             mse_scores = 0
@@ -159,7 +154,7 @@ class Tester:
             val_dataloader = self.test_dataloaders[subset]
             with torch.no_grad():
                 with autocast(enabled=False):
-                    # with autocast(enabled=not self.args.disable_mixed_precision):
+                    # with autocast(enabled=not self.args.disable_mixed_precision):# noqa
                     for i, input_dict in enumerate(tqdm.tqdm(val_dataloader)):
                         inputs = input_dict["inputs"].to(self.rank)
                         composite = input_dict["comp"].to(self.rank)
@@ -168,7 +163,6 @@ class Tester:
                         harmonized = self.model_ddp(composite, mask)
                         blending = mask * harmonized + (1 - mask) * composite
                         blending_img = 255 * blending
-                        harmonized_img = tensor2img(harmonized, bit=8)
                         real_img = 255 * real
                         psnr_score = PSNR()(blending_img, real_img, mask)
                         fore_area = torch.sum(mask)
@@ -177,7 +171,9 @@ class Tester:
                             real_img[0].permute(1, 2, 0),
                             mask[0][0],
                         )
-                        fore_ratio = fore_area / (mask.shape[-1] * mask.shape[-2]) * 100
+                        fore_ratio = (
+                            fore_area / (mask.shape[-1] * mask.shape[-2]) * 100
+                        )  # noqa
                         mse_score_img = MSE()(blending_img, real_img, mask)
                         fmse_score = fMSE()(blending_img, real_img, mask)
                         fpsnr_score = fPSNR()(blending_img, real_img, mask)
@@ -196,7 +192,7 @@ class Tester:
                             mse_scores_ratio["100"] += mse_score_img
 
                         self.log(
-                            f"psnr: {psnr_score}, mse: {mse_score_img}, mse_img: {mse_score_img}, fmse: {fmse_score}, ssim: {ssim_score}",
+                            f"psnr: {psnr_score}, mse: {mse_score_img}, mse_img: {mse_score_img}, fmse: {fmse_score}, ssim: {ssim_score}"  # noqa,
                         )
                         self.log(f"ratio: {fore_ratio}, fmse: {fmse_score}")
                         self.log(ratio_count, fmse_scores_ratio, ssim_score)
@@ -211,7 +207,6 @@ class Tester:
                         total_count += batch_size
             psnr_scores_mu = psnr_scores / total_count
             fpsnr_scores_mu = fpsnr_scores / total_count
-            mse_score_mu = mse_scores / total_count
             fmse_score_mu = fmse_scores / total_count
             mse_score_img_mu = mse_scores_img / total_count
             ssim_score_mu = ssim_scores / total_count
@@ -226,7 +221,7 @@ class Tester:
             self.log(f"Test set fMSE score: {fmse_score_mu}", level="LOG")
             self.log(f"Test set ssim score: {ssim_score_mu}", level="LOG")
             self.log(
-                f"Test: {psnr_scores_mu}, FPSNR: {fpsnr_scores_mu}, mse img: {mse_score_img_mu}",
+                f"Test: {psnr_scores_mu}, FPSNR: {fpsnr_scores_mu}, mse img: {mse_score_img_mu}",  # noqa
                 level="LOG",
             )
 

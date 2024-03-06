@@ -2,10 +2,7 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 import torchvision
-
-import torch
 import torch.nn as nn
-
 import kornia.metrics as metrics
 
 
@@ -21,7 +18,9 @@ class L_color(nn.Module):
         Drg = torch.pow(mr - mg, 2)
         Drb = torch.pow(mr - mb, 2)
         Dgb = torch.pow(mb - mg, 2)
-        k = torch.pow(torch.pow(Drg, 2) + torch.pow(Drb, 2) + torch.pow(Dgb, 2), 0.5)
+        k = torch.pow(
+            torch.pow(Drg, 2) + torch.pow(Drb, 2) + torch.pow(Dgb, 2), 0.5
+        )  # noqa
 
         return k
 
@@ -51,7 +50,7 @@ def get_image_gradients(image):  # -> tuple:
     if len(image_shape) == 3:
         # The input is a single image with shape [height, width, channels].
         # Calculate the difference of neighboring pixel-values.
-        # The images are shifted one pixel along the height and width by slicing.
+        # The images are shifted one pixel along height and width by slicing.
         dx = image[:, 1:, :] - image[:, :-1, :]  # pixel_dif2, f_v_1-f_v_2
         dy = image[1:, :, :] - image[:-1, :, :]  # pixel_dif1, f_h_1-f_h_2
 
@@ -65,8 +64,8 @@ def get_image_gradients(image):  # -> tuple:
         # right and bottom have the same dimensions as image
         dx, dy = right - image, bottom - image
 
-        # this is required because otherwise results in the last column and row having
-        # the original pixels from the image
+        # this is required because otherwise results in the last column and
+        # row having the original pixels from the image
         # dx will always have zeros in the last column, right-left
         dx[:, :, :, -1] = 0
         # dy will always have zeros in the last row,    bottom-top
@@ -97,17 +96,23 @@ def get_4dim_image_gradients(image):  # -> tuple[Any, Any, Tensor, Any]:
     # dp is positive diagonal (bottom left to top right)
     # dn is negative diagonal (top left to bottom right)
 
-    # this is required because otherwise results in the last column and row having
-    # the original pixels from the image
-    dx[:, :, :, -1] = 0  # dx will always have zeros in the last column, right-left
-    dy[:, :, -1, :] = 0  # dy will always have zeros in the last row,    bottom-top
+    # this is required because otherwise results in the last column and
+    # row having the original pixels from the image
+    dx[:, :, :, -1] = (
+        0  # dx will always have zeros in the last column, right-left #noqa
+    )
+    dy[:, :, -1, :] = (
+        0  # dy will always have zeros in the last row,    bottom-top #noqa
+    )
     dp[:, :, -1, :] = 0  # dp will always have zeros in the last row
 
     return dy, dx, dp, dn
 
 
 class GradientLoss(nn.Module):
-    def __init__(self, loss_f=None, reduction="mean", gradientdir="2d"):  # 2d or 4d
+    def __init__(
+        self, loss_f=None, reduction="mean", gradientdir="2d"
+    ):  # 2d or 4d #noqa
         super(GradientLoss, self).__init__()
         self.criterion = loss_f
         self.gradientdir = gradientdir
@@ -115,7 +120,7 @@ class GradientLoss(nn.Module):
     def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         if self.gradientdir == "4d":
             inputdy, inputdx, inputdp, inputdn = get_4dim_image_gradients(x)
-            targetdy, targetdx, targetdp, targetdn = get_4dim_image_gradients(y)
+            targetdy, targetdx, targetdp, targetdn = get_4dim_image_gradients(y)  # noqa
             return (
                 self.criterion(inputdx, targetdx)
                 + self.criterion(inputdy, targetdy)
@@ -127,7 +132,8 @@ class GradientLoss(nn.Module):
             inputdy, inputdx = get_image_gradients(x)
             targetdy, targetdx = get_image_gradients(y)
             return (
-                self.criterion(inputdx, targetdx) + self.criterion(inputdy, targetdy)
+                self.criterion(inputdx, targetdx)
+                + self.criterion(inputdy, targetdy)  # noqa
             ) / 2
 
 
@@ -162,7 +168,9 @@ class PSNRLoss(nn.Module):
         super().__init__()
         self.max_val: float = max_val
 
-    def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, input: torch.Tensor, target: torch.Tensor
+    ) -> torch.Tensor:  # noqa
         return psnr_loss(input, target, self.max_val)
 
 
@@ -182,7 +190,9 @@ class PSNRLossPositive(nn.Module):
         self.max_val: float = max_val
         self.eps: float = eps
 
-    def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, input: torch.Tensor, target: torch.Tensor
+    ) -> torch.Tensor:  # noqa
         return 100.0 / (self.eps + metrics.psnr(input, target, self.max_val))
 
 
@@ -190,10 +200,18 @@ class VGGPerceptualLoss(torch.nn.Module):
     def __init__(self, resize=True):
         super(VGGPerceptualLoss, self).__init__()
         blocks = []
-        blocks.append(torchvision.models.vgg16(pretrained=True).features[:4].eval())
-        blocks.append(torchvision.models.vgg16(pretrained=True).features[4:9].eval())
-        blocks.append(torchvision.models.vgg16(pretrained=True).features[9:16].eval())
-        blocks.append(torchvision.models.vgg16(pretrained=True).features[16:23].eval())
+        blocks.append(
+            torchvision.models.vgg16(pretrained=True).features[:4].eval()
+        )  # noqa
+        blocks.append(
+            torchvision.models.vgg16(pretrained=True).features[4:9].eval()
+        )  # noqa
+        blocks.append(
+            torchvision.models.vgg16(pretrained=True).features[9:16].eval()
+        )  # noqa
+        blocks.append(
+            torchvision.models.vgg16(pretrained=True).features[16:23].eval()
+        )  # noqa
         for bl in blocks:
             for p in bl.parameters():
                 p.requires_grad = False
@@ -207,7 +225,9 @@ class VGGPerceptualLoss(torch.nn.Module):
             "std", torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1)
         )
 
-    def forward(self, input, target, feature_layers=[0, 1, 2, 3], style_layers=[]):
+    def forward(
+        self, input, target, feature_layers=[0, 1, 2, 3], style_layers=[]
+    ):  # noqa
         if input.shape[1] != 3:
             input = input.repeat(1, 3, 1, 1)
             target = target.repeat(1, 3, 1, 1)
@@ -273,14 +293,20 @@ def upsample(x):
         [
             cc,
             torch.zeros(
-                x.shape[0], x.shape[1], x.shape[3], x.shape[2] * 2, device=x.device
+                x.shape[0],
+                x.shape[1],
+                x.shape[3],
+                x.shape[2] * 2,
+                device=x.device,  # noqa
             ),
         ],
         dim=3,
     )
     cc = cc.view(x.shape[0], x.shape[1], x.shape[3] * 2, x.shape[2] * 2)
     x_up = cc.permute(0, 1, 3, 2)
-    return conv_gauss(x_up, 4 * gauss_kernel(channels=x.shape[1], device=x.device))
+    return conv_gauss(
+        x_up, 4 * gauss_kernel(channels=x.shape[1], device=x.device)
+    )  # noqa
 
 
 def conv_gauss(img, kernel):
@@ -316,7 +342,8 @@ class LaplacianLoss(torch.nn.Module):
             img=target, kernel=self.gauss_kernel, max_levels=self.max_levels
         )
         return sum(
-            torch.nn.functional.l1_loss(a, b) for a, b in zip(pyr_input, pyr_target)
+            torch.nn.functional.l1_loss(a, b)
+            for a, b in zip(pyr_input, pyr_target)  # noqa
         )
 
 
@@ -364,7 +391,6 @@ def calculate_sad_fgbg(predict, alpha, trimap):
     weight_trimap[trimap == 128] = 1.0
     sad_fg = np.sum(sad_diff * weight_fg) / 1000
     sad_bg = np.sum(sad_diff * weight_bg) / 1000
-    sad_trimap = np.sum(sad_diff * weight_trimap) / 1000
     return sad_fg, sad_bg
 
 
@@ -390,7 +416,6 @@ def compute_connectivity_loss_whole_image(pd, gt, step=0.1):
     h, w = pd.shape
     thresh_steps = np.arange(0, 1.1, step)
     l_map = -1 * np.ones((h, w), dtype=np.float32)
-    lambda_map = np.ones((h, w), dtype=np.float32)
     for i in range(1, thresh_steps.size):
         pd_th = pd >= thresh_steps[i]
         gt_th = gt >= thresh_steps[i]
@@ -435,7 +460,7 @@ class MSE(nn.Module):
         """Подсчет MSE.
 
         Args:
-            pred (torch.tensor): Прогноз модели. Shape - (bs, ch, h, w). Float32.
+            pred (torch.tensor): Прогноз модели. Shape - (bs, ch, h, w).
             target (torch.tensor): GT. Shape - (bs, ch, h, w). Float32.
 
         Returns:
@@ -460,8 +485,9 @@ class FnMSE(nn.Module):
         """Инициализация объекта.
 
         Args:
-            min_area (float): Кол-во пикселей. Вес для штрафа на масках, имеющих меньше площадь уравновешивается до min_area.
-                              По умолчанию 100.0.
+            min_area (float): Кол-во пикселей. Вес для штрафа на масках,
+            имеющих меньше площадь уравновешивается до min_area.
+            По умолчанию 100.0.
         """
         super().__init__()
         self.min_area = min_area
@@ -472,9 +498,10 @@ class FnMSE(nn.Module):
         """Подсчет FnMSE.
 
         Args:
-            pred (torch.tensor): Прогноз модели. Shape - (bs, ch, h, w). Float32.
+            pred (torch.tensor): Прогноз модели. Shape - (b, c, h, w). Float32.
             target (torch.tensor): GT. Shape - (bs, ch, h, w). Float32.
-            mask (torch.tensor): Маска fg объекта. Shape - (bs, 1, h, w). {0, 1} значения.
+            mask (torch.tensor): Маска fg объекта. Shape - (b, 1, h, w).
+                                {0, 1} значения.
 
         Returns:
             loss (float): Значение FnMSE лосса.

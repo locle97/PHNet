@@ -3,9 +3,9 @@ from torch import multiprocessing as mp
 from torch import distributed as dist
 import os
 from tools import Trainer, log
-import sys
 import socket
 from contextlib import closing
+import sys
 
 
 def find_free_port() -> str:
@@ -17,9 +17,9 @@ def find_free_port() -> str:
 
 
 if __name__ == "__main__":
-    args = OmegaConf.load(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), f"config/train.yaml")
-    )
+    config_path = sys.argv[-1]
+    dir_name = os.path.dirname(os.path.abspath(__file__))
+    args = OmegaConf.load(os.path.join(dir_name, config_path))
 
     os.environ["MASTER_ADDR"] = args.distributed_addr
     os.environ["MASTER_PORT"] = find_free_port()
@@ -46,5 +46,8 @@ if __name__ == "__main__":
                 dist.destroy_process_group()
             except KeyboardInterrupt:
                 os.system(
-                    "kill $(ps aux | grep multiprocessing.spawn | grep -v grep | awk '{print $2}') "
+                    "kill $(ps aux | \
+                    grep multiprocessing.spawn | \
+                    grep -v grep | \
+                    awk '{print $2}')"
                 )
