@@ -37,7 +37,7 @@ if __name__ == "__main__":
     Path(args.output.path).mkdir(parents=True, exist_ok=True)
 
     infer = Inference(**args)
-    path = os.path.split(args.input.composite_path)[-1]
+    path = args.input.composite_path.split('_')[-1]  # comp_00609.png -> 00609.png
     comp = PIL.Image.open(args.input.composite_path)
     mask = PIL.Image.open(args.input.mask_path)
 
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     harmonized = PIL.Image.fromarray(harmonized)
     path_harm: str = os.path.join(args.output.path, f"harm_{path}")
     path_comp: str = os.path.join(args.output.path, f"comp_{path}")
-    path_mask: str = os.path.join(args.output.path, f"mask_{path[:-3]}.png")
+    path_mask: str = os.path.join(args.output.path, f"mask_{path}")
 
     harmonized.save(path_harm, subsampling=0, quality=100)
     comp.save(path_comp, subsampling=0, quality=100)
