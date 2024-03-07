@@ -3,7 +3,6 @@ from tools import Inference
 from omegaconf import OmegaConf
 import os
 import PIL
-from matplotlib import pyplot as plt
 import numpy as np
 import torchvision.transforms.functional as tf
 from pathlib import Path
@@ -21,7 +20,12 @@ def predict(comp, mask) -> np.uint8:
     compt: Tensor = tf.to_tensor(comp)
     maskt: Tensor = tf.to_tensor(mask)
     res = infer.harmonize(compt, maskt)
-    res: Tensor = tf.resize(res, in_shape)
+    res: Tensor = tf.resize(
+        res,
+        in_shape,
+        # the picture looks better this way
+        interpolation=tf.InterpolationMode.BICUBIC,
+    )
 
     return np.uint8((res * 255)[0].permute(1, 2, 0).numpy())
 
@@ -38,10 +42,11 @@ if __name__ == "__main__":
     mask = PIL.Image.open(args.input.mask_path)
 
     harmonized: np.uint8 = predict(comp, mask)
+    harmonized = PIL.Image.fromarray(harmonized)
     path_harm: str = os.path.join(args.output.path, f"harm_{path}")
     path_comp: str = os.path.join(args.output.path, f"comp_{path}")
     path_mask: str = os.path.join(args.output.path, f"mask_{path[:-3]}.png")
 
-    plt.imsave(path_harm, harmonized)
-    comp.save(path_comp)
-    mask.save(path_mask)
+    harmonized.save(path_harm, subsampling=0, quality=100)
+    comp.save(path_comp, subsampling=0, quality=100)
+    mask.save(path_mask, subsampling=0, quality=100)
