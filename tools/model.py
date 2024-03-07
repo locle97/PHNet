@@ -7,23 +7,6 @@ import cv2
 from .normalizer import PatchNormalizer, PatchedHarmonizer
 
 
-def inpaint_bg(comp, mask, dim=[2, 3]):
-    """
-    inpaint bg for ihd
-    Args:
-        comp (torch.float): [0:1]
-        mask (torch.float): [0:1]
-    """
-    back = comp * (1 - mask)  # *255
-    sum = torch.sum(back, dim=dim)  # (B, C)
-    num = torch.sum((1 - mask), dim=dim)  # (B, C)
-    mu = sum / (num)
-    mean = mu[:, :, None, None]
-    back = back + mask * mean
-
-    return back
-
-
 class ConvTransposeUp(nn.Sequential):
     def __init__(
         self,

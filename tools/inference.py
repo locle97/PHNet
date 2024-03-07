@@ -26,9 +26,9 @@ class Inference:
         while len(mask.shape) < 4:
             mask = mask.unsqueeze(0)
         composite: torch.Tensor = tf.resize(
-            composite, [self.image_size, self.image_size]
+            composite, [self.input.image_size, self.input.image_size]
         )
-        mask: torch.Tensor = tf.resize(mask, [self.image_size, self.image_size])  # noqa
+        mask: torch.Tensor = tf.resize(mask, [self.input.image_size, self.input.image_size])  # noqa
 
         log(composite.shape, mask.shape)
         with torch.no_grad():

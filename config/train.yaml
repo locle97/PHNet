@@ -6,7 +6,7 @@ datasets:
     ffhqh: "/home/jovyan/datasets/ffhqh/"
     dataset_root: "/home/jovyan/datasets/ffhqh/"
     ffhq: "/home/jovyan/datasets/ffhq/images1024x1024/"
-task_for_oneformer: "matting"
+
 datasets_to_use_test: ["FFHQH"]
 datasets_to_use_val: ["FFHQH"]
 dataset_to_use_train: "FFHQH"
@@ -23,7 +23,6 @@ disable_validation: False
 disable_mixed_precision: False
 log_image_interval: 10
 log_image_number: 4
-save_model_interval: 5
 lambda_losses: 
     default: 0.
     Color: 0.
@@ -33,7 +32,6 @@ lambda_losses:
     Gradient: 1e-2
     L2: 0.
     L1: 0.
-    softmax: 1e-4
 model:
     grid_counts: [4, 3, 2, 1]
     enc_sizes: [3, 16, 64, 128, 256, 512, 1024]

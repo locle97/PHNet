@@ -6,12 +6,10 @@ skips: True
 device: 'cpu'
 world_size: 1
 checkpoint:
-  harmonizer: "checkpoints/best_ffhqh512.pth" # put the path to the downloaded checkpoint
+  harmonizer: "checkpoints/ffhqh512.pth"  # put the path to the downloaded checkpoint
 input:
-  image_size: 512 # change image size in case of different resolution checkpoints usage usage
-  composite_path: /home/jovyan/datasets/iHarmony4/HAdobe5k/composite_images/a3323_1_1.jpg 
-  mask_path: /home/jovyan/datasets/iHarmony4/HAdobe5k/masks/a3323_1.png
+  image_size: 512  # change image size in case of different resolution checkpoints usage usage
+  composite_path: assets/comp_00609.png
+  mask_path: assets/mask_00609.png
 output:
   path: outputs/
-# onnx: False
-image_size: 512
